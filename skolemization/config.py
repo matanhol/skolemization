@@ -35,11 +35,15 @@ SHOW_FULL_KB_EACH_STEP = True
 
 # After each step, show the runners-up: the two next-best candidates and the
 # key that decided between them.  The ranking is the one thing in the search a
-# reader cannot see from the result -- when the prover takes a step that is not
-# the one they would have taken, this is what tells them which preference
-# overruled theirs, instead of leaving it looking arbitrary.
+# reader cannot see from the result, so when the prover takes a step that is
+# not the one they would have taken, this is what names the preference that
+# overruled theirs instead of leaving it looking arbitrary.
+#
+# Off, because that is a question a reader has now and then and the block is
+# printed at every step: the proof itself is what the transcript is for.  Turn
+# it on for the lesson where the question comes up.
 
-EXPLAIN_CHOICE = True
+EXPLAIN_CHOICE = False
 
 # Close a saturated search by showing why nothing more can be derived: a full
 # subsumption sweep over the final KB, then every remaining pair and what it
@@ -185,7 +189,7 @@ RTL_OUTPUT = True
 # all parse to the same tree, Not(Atom("=", ...)), so the search cannot tell
 # them apart and no example's answer or step count moves with this setting.
 
-NEGATED_EQUALITY = "not"
+NEGATED_EQUALITY = "≠"
 
 # Draw every grouping bracket at its own height, stacked out of ⎛ ⎜ ⎝ pieces:
 # three rows for the innermost level and two more for every level outwards, so

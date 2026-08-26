@@ -445,11 +445,13 @@ example changes status, and `with_eq_axioms` and `matching_argument_order` each 
 sooner. Putting generality *before* length instead loses `with_eq_axioms` entirely (`PROVED` →
 `UNKNOWN`), which is why it is a tie-break.
 
-**The ranking explains itself** (`config.EXPLAIN_CHOICE`, **on** by default). After each step the
+**The ranking can explain itself** (`config.EXPLAIN_CHOICE`, **off** by default). With it on, after
+each step the
 narration prints the two next-best *different* candidates and the first key on which the winner
 pulled ahead — or says the candidates were level and the order arbitrary. The ranking is the one
-part of the search a reader cannot reconstruct from the result, so without this a step that is not
-the step they would have taken looks arbitrary rather than explicable. The key *names* live in
+part of the search a reader cannot reconstruct from the result, so a step that is not the step they
+would have taken looks arbitrary until this names the key that overruled it — which is worth a block
+per step only while that is the question being asked, hence the default. The key *names* live in
 `search.STRATEGY_KEY_NAMES`, beside the functions, so the printed reason cannot drift from the key
 that ran; `narration.RANKING_KEY_NAMES` holds their Hebrew.
 

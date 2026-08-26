@@ -29,14 +29,14 @@ F1:
        ⎝                     ⎠
 ```
 
-A resolution step, with the literals crossed, the substitution that made them match, and — because
-the ranking is the one part of a search a reader cannot reconstruct from the result — the runners-up
-and the key that decided against them:
+A resolution step: the two clauses, the literals crossed, the substitution that made them match, and
+what is left once they cancel.
 
 ```
 ======================================================================
 Resolution step 4
 ======================================================================
+
 בוחרים:
 
 C2: ¬S(y) ∨ y = c
@@ -57,12 +57,10 @@ C9: S(c3)
 
 מתקבל:
     c3 = c
-
-מדוע דווקא הצעד הזה:
-    מולו עמד: T(c)
-    מולו עמד: ¬(c = c3)
-    הכריע המפתח סוג כלל ההיסק: 0 מול 1
 ```
+
+Set `EXPLAIN_CHOICE` and each step also names the two candidates it beat and the ranking key that
+decided — for when the prover takes a step you would not have taken.
 
 A search that ends without a contradiction explains *that* too: it sweeps the knowledge base for
 redundant clauses and then walks every step still available, one line each, saying why none of them
@@ -137,7 +135,7 @@ still match what each docstring claims.
 | `FOCUS_ON_WITNESS` | try the search once with every variable pinned to the Skolem witness before running it in general |
 | `SET_OF_SUPPORT` | allow only inferences that touch the negated conclusion |
 | `TALL_BRACKETS` | draw grouping brackets at their real height, as above |
-| `EXPLAIN_CHOICE` | print the runners-up after each step |
+| `EXPLAIN_CHOICE` | off by default; on, it prints the runners-up after each step and the key that beat them |
 | `NARRATE` | off makes `prove` a silent library call |
 
 ## The notebook
