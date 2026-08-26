@@ -772,7 +772,18 @@ def clause_kb(
 # SEARCH
 # ================================================================
 
-GENERAL_SEARCH = phrase("module")
+def general_search_title():
+
+    """The banner over the unfocused search.
+
+    A function rather than a constant: a module-level ``phrase(...)`` would be
+    looked up once, at import, and every later run would be narrated in
+    whatever language happened to be set at that moment.
+    """
+
+    return phrase(
+        "general_search"
+    )
 
 
 def focused_search_title(

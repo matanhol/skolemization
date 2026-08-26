@@ -36,6 +36,30 @@ approval. There is one remote, `origin`, pointing at the public repository
 `github.com/matanhol/skolemization`; pushing stays a deliberate act, not something that follows a
 commit automatically.
 
+**Partition the work, then parallelise it. This is not an optimisation; it is how work is planned
+here.**
+
+**Plan by dependency first.** Before starting anything with more than one part, ask of every
+subtask: does it need the output of an earlier one? Those form a cascade and run in order.
+Everything else runs at the same time, one subagent per piece. Then ask the same question *inside*
+each subtask, recursively — a stage of a cascade is usually partitionable itself, and a serial chain
+of parallel fans is still parallel work.
+
+Two examples of the shape:
+
+- running many tests or measurements and aggregating the results into one table — every run is
+  independent of the others, and the table is the reduce;
+- translating many phrases that do not depend on each other — likewise, one fan-out and one merge.
+
+**The reduce step is never delegated.** Results come back to be checked against each other and
+against this repository's invariants — the examples still agree, the Hebrew transcripts are still
+byte-for-byte what they were, the notebook still flattens, this file still describes what the code
+does — before anything is committed.
+
+What *not* to fan out: pieces that share state or must see each other's results, anything where one
+piece's answer changes another's question, and single edits — a subagent costs more than the edit it
+would make.
+
 `skolemization_example.py` at the root is the **frozen original** — the single-file Colab export
 the package was split out of. It still runs, but it is a reference copy: all changes go to
 `skolemization/`, and the two will drift.
@@ -319,6 +343,11 @@ ignored (there is no whole-KB moment to close on while one formula is mid-conver
 formula ends with its own clauses instead, and `clause_kb` still prints the combined KB at the
 end), and a step that changes nothing prints `narration.formula_unchanged()` rather than printing
 nothing, because in a chain a silent step reads as a step that never ran.
+
+**The narration speaks whichever language `config.LANGUAGE` names** — `"he"` or `"en"`, and an
+unrecognised value raises. The words live in `phrases/`, the layout in `narration.py`, and the
+direction follows the language (see above). Measured when English was added: every example gives the
+same status and the same step count in both, and the Hebrew output is byte-for-byte what it was.
 
 **Import config as a module**, not by value: `from . import config` then `config.STRATEGY`.
 `from .config import STRATEGY` freezes the value at import time and breaks the documented

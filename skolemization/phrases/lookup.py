@@ -15,6 +15,7 @@ notebook build flattens the modules away and a dict survives that.
 """
 
 from .. import config
+from . import english
 from . import hebrew
 
 
@@ -23,6 +24,11 @@ CATALOGUES = {
         "phrases": hebrew.PHRASES,
         "tables": hebrew.TABLES,
         "direction": hebrew.DIRECTION,
+    },
+    "en": {
+        "phrases": english.PHRASES,
+        "tables": english.TABLES,
+        "direction": english.DIRECTION,
     },
 }
 

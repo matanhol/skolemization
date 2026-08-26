@@ -86,7 +86,7 @@ def prove(
         final_kb
     ) = run_resolution_search(
         original_kb,
-        narration.GENERAL_SEARCH,
+        narration.general_search_title(),
         supported=prepared.conclusion_clauses
     )
 

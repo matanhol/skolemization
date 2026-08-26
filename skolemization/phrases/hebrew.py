@@ -150,7 +150,7 @@ PHRASES = {
     "clause_kb":
     "KB לפני Resolution",
 
-    "module":
+    "general_search":
     "Resolution כללי",
 
     "focused_search_title":
