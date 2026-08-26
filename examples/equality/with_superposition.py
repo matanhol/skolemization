@@ -12,6 +12,24 @@ Superposition מוסיפה סדר על האיברים ומרשה להציב רק
 כך עובדים Vampire ,E ו-SPASS.
 """
 
+COMMENTARY_EN = """4. The same rule, in the version real solvers are built out of.
+
+Paramodulation substitutes equals for equals in both directions -- l in
+place of f, and f in place of l as well. Half of that work undoes the
+other half.
+
+Superposition adds an ordering on terms and permits substituting only
+"downhill": always replacing a term by one smaller than it, never the
+other way round.
+
+9 steps against 16. Exactly the same answer, for almost half the work --
+and the bigger the question gets, the more that difference is the
+difference between a solver that works and a solver that gets stuck.
+
+This is how Vampire, E and SPASS work.
+"""
+
+
 from skolemization import (
     config,
     prove,

@@ -135,13 +135,8 @@ there is no counter-model. It demonstrates a limit of this solver, not of the lo
 ## The notebook
 
 `skolemization.ipynb` is the package as one Colab notebook: **cell 1 is the whole model**, then a
-markdown cell of commentary and a code cell for each of the twenty-four examples, in the
-order they appear under `examples/`. **One notebook per language**: the build reads
-`config.LANGUAGE`, takes each example's commentary from its Hebrew docstring or its
-`COMMENTARY_EN` constant accordingly, rewrites `LANGUAGE` inside the flattened `class config:` so
-the prover in the notebook speaks the same language as the prose around it, and writes
-`skolemization.ipynb` for Hebrew or `skolemization.<language>.ipynb` for anything else. A module
-with no `COMMENTARY_EN` falls back to its docstring, so a half-translated package still builds. Each example cell restates its own assumptions, so the
+markdown cell of Hebrew commentary and a code cell for each of the twenty-four examples, in the
+order they appear under `examples/`. Each example cell restates its own assumptions, so the
 cells can be run in any order. `build_notebook.py` writes it, stdlib `ast` and `json` only, and
 nothing in it is hand-written — every formula, status and word of Hebrew is read out of
 `skolemization/` and `examples/`.
@@ -242,9 +237,7 @@ Representation: frozen dataclasses. `Term` (with `is_var`), `Atom`, and the conn
 `list[list[Literal]]` — a KB is a list of clauses, a clause is a list of `Literal`.
 
 Examples are one package per problem: `assumptions.py` holds the shared knowledge base and each
-conclusion gets its own script importing it. **Every example module carries its commentary twice** —
-the Hebrew as its docstring, the English as a `COMMENTARY_EN` constant right after it — and only
-`build_notebook.py` reads either, so a translation cannot affect what the prover does. `examples/teacher/` is the lecturer's own question, run with nothing overridden; the same
+conclusion gets its own script importing it. `examples/teacher/` is the lecturer's own question, run with nothing overridden; the same
 question appears again in `examples/recursion/`, where the settings are changed to make the search
 run away. `examples/dogs/` has two assumption sets —
 `BASE`, and `OWNERSHIP_VARIANT` for the one case where rewording the assumptions changes the
@@ -675,7 +668,7 @@ which forces symmetry, and the key must cross the identity, which forces congrue
 
 | | result | steps |
 | --- | --- | --- |
-| `without_congruence.py` — the three properties, no congruence | **UNKNOWN** | the step limit, whatever it is |
+| `without_congruence.py` — the three properties, no congruence | **UNKNOWN** | 150 (limit) |
 | `with_congruence.py` — symmetry + transitivity + congruence for `K` | PROVED | 343 |
 | `with_paramodulation.py` — `=`, no axioms | PROVED | 16 |
 | `with_superposition.py` — `=`, no axioms, ordered | PROVED | 9 |

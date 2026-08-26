@@ -21,6 +21,31 @@
 אחד שמנצח תמיד, וזה בדיוק הלקח.
 """
 
+COMMENTARY_EN = """Question 3a
+
+Note that the fact that the equality relation is symmetric has to be added
+explicitly (and transitive and reflexive too, for good measure).
+
+The conclusion uses Eq(y,x) while the assumption supplies Eq(x,y), so
+without symmetry no contradiction will be found -- see without_eq_axioms.
+
+
+A note on the search strategy:
+
+the default is "shallowest_general_first" -- depth of terms before
+anything else, so that the search does not run away into nested terms
+(see examples/recursion).
+
+Here, of all places, that preference does damage: the equality axioms
+build deep terms (transitivity and congruence do precisely that), and
+under that ranking the search does not finish within 150 steps. Under the
+previous ranking, without the depth key, the proof is found in 7 steps.
+
+That is measured, and it is why this example picks a strategy explicitly:
+there is no one ranking that always wins, and that is exactly the lesson.
+"""
+
+
 from skolemization import (
     config,
     prove,

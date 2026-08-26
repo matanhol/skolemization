@@ -26,6 +26,35 @@ Assumptions:
 
 """
 
+COMMENTARY_EN = """Question 8
+
+Assumptions:
+1. Every programmer who knows logic writes correct code
+2. Whoever writes correct code gets a bonus
+3. There is a programmer who does not get a bonus
+
+Conclusion:
+There is a programmer who does not know logic
+
+Formalisation:
+Definitions:
+Pr(x): x is a programmer
+L(x): x knows logics
+C(x): x writes code correctly
+B(x): x gets bonus
+
+
+Assumptions:
+
+1. all x ((Pr(x) and L(x)) -> C(x))
+
+2. all x (C(x) -> B(x))
+
+3. exists x (Pr(x) and not B(x))
+
+"""
+
+
 ASSUMPTIONS = [
     "all x ((Pr(x) and L(x)) -> C(x))",
     "all x (C(x) -> B(x))",

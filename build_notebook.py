@@ -28,13 +28,25 @@ import pathlib
 import textwrap
 
 import skolemization
+from skolemization import config
 
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent
 
 PACKAGE = "skolemization"
 
-NOTEBOOK = REPO_ROOT / "skolemization.ipynb"
+def notebook_path():
+
+    """Where this build goes -- one notebook per language.
+
+    Hebrew keeps the plain name, since it is the default and what every link
+    points at; another language gets a suffix rather than overwriting it.
+    """
+
+    if config.LANGUAGE == "he":
+        return REPO_ROOT / "skolemization.ipynb"
+
+    return REPO_ROOT / f"skolemization.{config.LANGUAGE}.ipynb"
 
 BANNER_RULE = "# " + "=" * 64
 
@@ -168,12 +180,16 @@ EXAMPLE_GROUPS = [
 ]
 
 
-# An example whose cell deserves a warning the docstring does not carry.
+# An example whose cell deserves a warning the docstring does not carry -- in
+# each language the notebook can be built in, since this note is written here
+# rather than read out of the example.
 
 EXTRA_NOTES = {
 
-    "examples.equality.with_congruence":
-    "⚠️ התא הזה רץ 343 צעדים ולוקח כמה דקות.",
+    "examples.equality.with_congruence": {
+        "he": "⚠️ התא הזה רץ 343 צעדים ולוקח כמה דקות.",
+        "en": "⚠️ This cell runs for 343 steps and takes a few minutes.",
+    },
 }
 
 
@@ -388,6 +404,51 @@ def ordered_modules():
 # ================================================================
 # TURNING A MODULE INTO A SECTION OF THE CELL
 # ================================================================
+
+def commentary_of(tree):
+
+    """An example's commentary, in the language the notebook is being built in.
+
+    Every example carries its teaching text twice: the Hebrew as the module
+    docstring, the English as a ``COMMENTARY_EN`` constant beside it.  Under
+    ``config.LANGUAGE = "en"`` the constant is used and the docstring ignored;
+    a module that has not been given one falls back to the docstring rather
+    than losing its commentary, so a half-translated package still builds.
+    """
+
+    if config.LANGUAGE == "he":
+
+        return docstring_of(
+            tree
+        )
+
+    for node in tree.body:
+
+        if not isinstance(
+            node,
+            ast.Assign
+        ):
+
+            continue
+
+        for target in node.targets:
+
+            if (
+                isinstance(target, ast.Name)
+                and
+                target.id == "COMMENTARY_EN"
+                and
+                isinstance(node.value, ast.Constant)
+            ):
+
+                return textwrap.dedent(
+                    node.value.value
+                ).strip()
+
+    return docstring_of(
+        tree
+    )
+
 
 def docstring_of(tree):
 
@@ -643,7 +704,18 @@ def stdlib_imports(tree):
 
 def as_config_class(body, doc):
 
-    """``config.py`` as ``class config:``, so ``config.X`` keeps working."""
+    """``config.py`` as ``class config:``, so ``config.X`` keeps working.
+
+    With one value overridden: LANGUAGE is set to the language the notebook is
+    being built in.  Otherwise an English notebook would carry English
+    commentary around a prover still narrating in Hebrew, because config.py is
+    copied in verbatim and its default is "he".
+    """
+
+    body = body.replace(
+        'LANGUAGE = "he"',
+        f'LANGUAGE = "{config.LANGUAGE}"'
+    )
 
     quoted = '"""' + doc + '\n"""'
 
@@ -1085,7 +1157,7 @@ def example_cells():
 
         cells.append(
             markdown_cell(
-                docstring_of(intro_tree)
+                commentary_of(intro_tree)
             )
         )
 
@@ -1093,11 +1165,17 @@ def example_cells():
 
             module, tree = example_module(name)
 
-            text = docstring_of(tree)
+            text = commentary_of(tree)
 
             if name in EXTRA_NOTES:
 
-                text = text + "\n\n" + EXTRA_NOTES[name]
+                text = (
+                    text
+                    + "\n\n"
+                    + EXTRA_NOTES[name][
+                        config.LANGUAGE
+                    ]
+                )
 
             cells.append(
                 markdown_cell(text)
@@ -1240,7 +1318,9 @@ def main():
 
     """Write the notebook, and say how big it came out."""
 
-    NOTEBOOK.write_text(
+    path = notebook_path()
+
+    path.write_text(
         json.dumps(
             notebook(),
             ensure_ascii=False,
@@ -1250,7 +1330,8 @@ def main():
     )
 
     print(
-        f"wrote {NOTEBOOK.relative_to(REPO_ROOT)}"
+        f"wrote {path.relative_to(REPO_ROOT)} "
+        f"({config.LANGUAGE})"
     )
 
 

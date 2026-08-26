@@ -13,6 +13,23 @@ S(g2(c)) לבין S(g2(g1(g2(g1(g2(c)))))): שתיהן פסוקית באורך �
 המיקוד ב-witness מכובה בכוונה: הוא מקבע x := c ומסתיר את התופעה.
 """
 
+COMMENTARY_EN = """1. The old ranking: the search runs away into nested terms.
+
+STRATEGY = "shortest_general_first" -- clause length first, then "needs no
+assignment", and only then term weight. Not one of those keys can tell
+S(g2(c)) from S(g2(g1(g2(g1(g2(c)))))): both are a clause of length one.
+
+The result: every step produces the next link in the chain, a little deeper,
+forever.
+
+Here the limit is lowered to 12 steps so that this stays readable -- with the
+usual limit of 150 steps the solver reaches terms of depth **one hundred** and
+returns UNKNOWN after nearly a minute.
+
+The witness focus is off on purpose: it pins x := c and hides the phenomenon.
+"""
+
+
 from skolemization import (
     config,
     prove,

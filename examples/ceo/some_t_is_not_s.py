@@ -15,6 +15,26 @@ exists x (T(x) and not S(x))
 ההיסק מציב שווה בשווה בתוך האיברים.
 """
 
+COMMENTARY_EN = """The conclusion: someone applied and did not succeed
+
+exists x (T(x) and not S(x))
+
+Runs with the defaults, and proves in 7 steps.
+
+The contradiction is closed through the equality, and this is how it
+looks in the output:
+
+from C7 and C3 we get S(c2), and from C2 it follows that c2 = c. The
+same for c3. The equality c2 = c is substituted into C5 and turns it
+into c ≠ c3, then c3 = c is substituted again and c ≠ c comes out -- a
+literal that is false in itself, deleted on sight
+(clauses.drop_false_equalities), and what is left is the empty clause.
+
+Note that not one of those three steps is an equality axiom: it is the
+inference rule substituting equals for equals inside the terms.
+"""
+
+
 from skolemization import prove
 
 from .assumptions import ASSUMPTIONS

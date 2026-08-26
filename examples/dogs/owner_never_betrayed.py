@@ -9,6 +9,23 @@
 השוו ל-owner_never_betrayed_variant, שבו אותה מסקנה כן נובעת.
 """
 
+COMMENTARY_EN = """A conclusion that does not follow from the assumptions as they are phrased here:
+
+if y is the owner of x then x does not betray y
+
+Why does it not follow? Because all we claimed is that every dog has an owner
+and that it is loyal to him.
+
+In fact the owner could have been left out altogether, writing only that the dog
+is loyal to someone.
+
+Nothing here connects O to F in general: the link is made only for dogs, and only
+for the one owner assumption 1 produces, whereas the conclusion quantifies over
+every pair. Compare owner_never_betrayed_variant, where the same conclusion does
+follow.
+"""
+
+
 from skolemization import prove
 
 from .assumptions import BASE

@@ -3,6 +3,8 @@ __pycache__/
 .claude/settings.local.json
 .DS_Store
 
-# Generated: python3 build_notebook.py rebuilds it byte for byte from the
-# package and the examples, so it is not worth a 60-cell JSON diff per edit.
+# Generated: python3 build_notebook.py rebuilds these byte for byte from the
+# package and the examples -- one per language -- so they are not worth a
+# 60-cell JSON diff per edit.
 skolemization.ipynb
+skolemization.*.ipynb

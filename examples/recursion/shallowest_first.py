@@ -15,6 +15,24 @@ STRATEGY = "shallowest_general_first" מדרג קודם כל לפי כמה עמ�
 ממילא לא נותנת לאיברים לגדול.
 """
 
+COMMENTARY_EN = """2. The default: term depth is the first key.
+
+STRATEGY = "shallowest_general_first" ranks first by how deeply the deepest
+term in the result nests, and only after that by clause length, by "needs no
+assignment", and by weight.
+
+The chain from runaway is simply never picked: S(g2(g1(g2(c)))) is deeper than
+anything else on offer at that moment, so it waits -- and its turn never comes.
+
+6 steps, and no term in the proof nests more than one level. Same question,
+same solver, one extra ranking key.
+
+The witness focus is off here too, so that the comparison with runaway is a
+fair one; with the focus on, even the old ranking proves it (in 7 steps),
+because the substitution x := c does not let the terms grow in any case.
+"""
+
+
 from skolemization import (
     config,
     prove,

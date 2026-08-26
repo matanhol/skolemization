@@ -7,6 +7,16 @@
 כאן רק מספקים את שתי הנוסחאות.
 """
 
+COMMENTARY_EN = """Both directions together, and the verdict on equivalence.
+
+If both entailments are proved then φ1 ≡ φ2.
+If at least one of them is not proved, the solver has not proved equivalence.
+
+All the work happens in Equivalence, inside the package itself;
+here we only supply the two formulas.
+"""
+
+
 from .question import question
 
 

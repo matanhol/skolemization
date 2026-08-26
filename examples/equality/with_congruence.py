@@ -25,6 +25,37 @@
 אקסיומה מראש, כי כשכותבים את ההנחות הן עוד לא קיימות.
 """
 
+COMMENTARY_EN = """2. The same question, and one more axiom: congruence for K.
+
+Now the conclusion is proved, and the proof uses three different things:
+
+symmetry, to turn f = l into l = f;
+
+transitivity, to chain that on to l = g;
+
+and congruence, to carry K over from the gardener to the letter-sender.
+
+Take the congruence away -- see without_congruence -- and the conclusion
+is no longer proved.
+
+Two things were measured here and are worth attention:
+
+**The cost in steps.** 343 steps, which is why the step limit is raised
+here. The inference rule does the same work in 16.
+
+**Reflexivity does harm.** If reflexive_relations is declared as well, the
+search does not finish even at 400 steps: the axiom Eq(x,x) unifies with
+almost every equality and floods the search. It is also not needed here,
+and so it is not declared.
+
+And the real cost is not the number of steps but the axiom itself: it was
+written for K alone. Every further predicate in the language needs one of
+its own, every function does too, and so do the Skolem functions that come
+into being only in step 4 -- for which no axiom can be written in advance,
+because at the time the assumptions are written they do not yet exist.
+"""
+
+
 from skolemization import (
     config,
     prove,

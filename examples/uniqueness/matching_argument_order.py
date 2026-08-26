@@ -7,6 +7,16 @@ Eq(x,y)
 אבל במקרים מורכבים יותר, שהוא צריך להסיק באמצעות סימטריות, טרנזיטיביות וכו' - זה לא יעבוד
 """
 
+COMMENTARY_EN = """Alternatively one can simply write the formula in the same shape in both places:
+
+Eq(x,y)
+
+in this particular case that is enough
+
+but in more involved cases, where the solver has to reason through symmetry, transitivity and so on - that will not work
+"""
+
+
 from skolemization import prove
 
 from .assumptions import ASSUMPTIONS

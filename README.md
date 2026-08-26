@@ -143,7 +143,8 @@ still match what each docstring claims.
 
 `build_notebook.py` flattens the whole package into `skolemization.ipynb` — one Colab cell holding
 the entire model, then a cell per example. It is generated and deliberately untracked; rebuild it
-with `python3 build_notebook.py`. The proof that flattening changed nothing is that the narration is
+with `python3 build_notebook.py`. Set `LANGUAGE = "en"` first and it writes
+`skolemization.en.ipynb` instead, with the commentary and the narration both in English. The proof that flattening changed nothing is that the narration is
 byte-for-byte identical between the package and the notebook cell.
 
 `skolemization_example.py` is the frozen single-file original the package was split out of. It still

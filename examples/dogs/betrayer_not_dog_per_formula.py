@@ -11,6 +11,20 @@
 ה-clauses שיוצאים בסוף זהים -- רק הסיפור שונה.
 """
 
+COMMENTARY_EN = """Exactly the same proof as in betrayer_not_dog, told in a different order:
+
+instead of each step sweeping across all the formulas,
+
+each formula goes through steps 2 to 7 on its own,
+
+from the form it was written in down to its clauses,
+
+and only then do we start on the next formula.
+
+The clauses that come out at the end are identical -- only the story differs.
+"""
+
+
 from skolemization import (
     config,
     prove,

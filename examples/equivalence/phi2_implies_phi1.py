@@ -1,5 +1,8 @@
 """כיוון 2:  φ2 ⊨ φ1"""
 
+COMMENTARY_EN = """Direction 2:  φ2 ⊨ φ1"""
+
+
 from .question import question
 
 
