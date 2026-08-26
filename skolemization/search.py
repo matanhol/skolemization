@@ -12,6 +12,11 @@ from .clauses import (
     canonical_clause,
     drop_false_equalities,
 )
+from .counterexample import (
+    as_formula,
+    simplify_against_units,
+    what_the_conclusion_needed,
+)
 from .factoring import factor_clause
 from .inference import (
     FACTORING,
@@ -93,6 +98,15 @@ def run_resolution_search(
         if position not in seeds
     }
 
+    # The negated conclusion's own clauses, kept as they entered: what
+    # config.EXPLAIN_COUNTEREXAMPLE reads backwards if the search runs dry.
+    from_the_conclusion = [
+        list(clause)
+        for position, clause
+        in enumerate(kb)
+        if position in seeds
+    ]
+
     narration.search_header(
         title,
         kb
@@ -173,6 +187,14 @@ def run_resolution_search(
                 kb = explain_saturated_kb(
                     kb,
                     ever_seen,
+                    focused
+                )
+
+            if config.EXPLAIN_COUNTEREXAMPLE:
+
+                _read_off_counterexample(
+                    from_the_conclusion,
+                    kb,
                     focused
                 )
 
@@ -293,6 +315,50 @@ def run_resolution_search(
     return (
         "UNKNOWN",
         kb
+    )
+
+
+def _read_off_counterexample(
+    from_the_conclusion,
+    kb,
+    focused
+):
+
+    """Work backwards from a saturated KB to the shape of a counter-model.
+
+    Only where saturation certifies something.  A focused KB is one guess out
+    of many, and a search under ``SET_OF_SUPPORT`` never tried the inferences
+    among the assumptions -- neither running dry says the clauses are
+    satisfiable, so neither may be read as a model.  Both refusals are said out
+    loud; silence would look like an answer.
+    """
+
+    if focused or config.SET_OF_SUPPORT:
+
+        narration.counterexample_refused(
+            focused
+        )
+
+        return
+
+    reduced = simplify_against_units(
+        from_the_conclusion,
+        kb
+    )
+
+    shape = as_formula(
+        reduced
+    )
+
+    narration.counterexample(
+        from_the_conclusion,
+        reduced,
+        shape,
+        what_the_conclusion_needed(
+            shape
+        )
+        if shape is not None
+        else None
     )
 
 

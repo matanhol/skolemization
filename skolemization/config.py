@@ -51,6 +51,18 @@ EXPLAIN_CHOICE = False
 
 EXPLAIN_SATURATION = True
 
+# Experimental.  When a search saturates, work backwards from it: take the
+# clauses that came from the negated conclusion, let the units the search found
+# simplify them, and undo the pipeline -- steps 7 to 1, skipping step 4, so the
+# Skolem witnesses stay.  What comes out is the shape any counter-model has to
+# have (counterexample.py).
+#
+# Off, and it refuses to run where saturation certifies nothing: after UNKNOWN,
+# on a witness-focused KB, or under SET_OF_SUPPORT.  Those refusals are printed
+# rather than silent.
+
+EXPLAIN_COUNTEREXAMPLE = False
+
 # Set of support: seed a "supported" set with the clauses of the negated
 # conclusion, and allow only inferences that touch it -- every result joining
 # the set in turn.  The assumptions are left resolving against the conclusion

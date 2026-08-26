@@ -632,6 +632,55 @@ The relation axioms stay general, without the substitution:""",
     "focused_kb":
     "The KB after focusing on {witness}",
 
+    "counterexample_header":
+    "What a counter-model has to look like",
+
+    "counterexample_intro_1":
+    """
+A saturated search is not only "no contradiction found": a saturated""",
+
+    "counterexample_intro_2":
+    "clause set with no □ in it is satisfiable, and there is a model inside",
+
+    "counterexample_intro_3":
+    """it. The clauses that came from the negated conclusion say what that
+model has to look like.""",
+
+    "counterexample_entered":
+    """
+The clauses of the negated conclusion, as they entered:""",
+
+    "counterexample_reduced":
+    """
+After the one-literal clauses the search found have simplified them:""",
+
+    "counterexample_shape":
+    """
+and read back as a formula (without undoing the Skolemization, so the
+witnesses stay):""",
+
+    "counterexample_together":
+    """
+Every counter-model must satisfy this, together with the assumptions.""",
+
+    "counterexample_needed":
+    """
+Its negation is what the conclusion would have needed:""",
+
+    "counterexample_nothing":
+    """
+Nothing is left of the negated conclusion -- it was consumed entirely.""",
+
+    "counterexample_refused_focused":
+    """
+No counter-model was read off: this is the focused KB, and the
+substitution in it is a guess.""",
+
+    "counterexample_refused_support":
+    """
+No counter-model was read off: the search ran with a set of support, so
+its running dry certifies nothing.""",
+
 }
 
 

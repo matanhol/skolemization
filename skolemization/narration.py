@@ -1999,6 +1999,121 @@ def unit_sweep_nothing():
 # WHY A SATURATED SEARCH IS FINISHED
 # ================================================================
 
+def counterexample(
+    entered,
+    reduced,
+    shape,
+    needed
+):
+
+    """Working backwards from a saturated KB to what a counter-model must be.
+
+    Pure epilogue: the answer is already fixed, and this only reads the
+    negated conclusion's own clauses back out of it.  The reader gets the three
+    stages -- as they entered, what the units left of them, and the formula
+    they amount to -- and then the negation, which is what the conclusion would
+    have needed to hold.
+    """
+
+    say(
+        "\n"
+        + LINE
+    )
+
+    say(
+        phrase("counterexample_header")
+    )
+
+    say(
+        LINE
+    )
+
+    say(
+        phrase("counterexample_intro_1")
+    )
+
+    say(
+        phrase("counterexample_intro_2")
+    )
+
+    say(
+        phrase("counterexample_intro_3")
+    )
+
+    say(
+        phrase("counterexample_entered")
+    )
+
+    for clause in entered:
+
+        say(
+            "    "
+            + ltr(
+                clause_str(clause)
+            )
+        )
+
+    if not reduced:
+
+        say(
+            phrase("counterexample_nothing")
+        )
+
+        return
+
+    say(
+        phrase("counterexample_reduced")
+    )
+
+    for clause in reduced:
+
+        say(
+            "    "
+            + ltr(
+                clause_str(clause)
+            )
+        )
+
+    say(
+        phrase("counterexample_shape")
+    )
+
+    say_block(
+        "    ",
+        formula_str(shape),
+        indent="    "
+    )
+
+    say(
+        phrase("counterexample_together")
+    )
+
+    say(
+        phrase("counterexample_needed")
+    )
+
+    say_block(
+        "    ",
+        formula_str(needed),
+        indent="    "
+    )
+
+
+def counterexample_refused(
+    focused
+):
+
+    """Why no counter-model was read off, when the flag asked for one."""
+
+    say(
+        phrase(
+            "counterexample_refused_focused"
+            if focused
+            else "counterexample_refused_support"
+        )
+    )
+
+
 def saturation_header():
 
     """Opening the account of a search that ran out of moves."""

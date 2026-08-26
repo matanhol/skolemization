@@ -632,6 +632,53 @@ factoring של C{index}: """,
     "focused_kb":
     "KB לאחר המיקוד ב-{witness}",
 
+    "counterexample_header":
+    "מה צריך להיות נכון במודל נגדי",
+
+    "counterexample_intro_1":
+    """
+חיפוש שרווי הוא לא רק "לא נמצאה סתירה": קבוצת clauses רוויה""",
+
+    "counterexample_intro_2":
+    "בלי □ היא ספיקה, ויש בה מודל. ה-clauses שהגיעו משלילת",
+
+    "counterexample_intro_3":
+    "המסקנה הם אלה שאומרים איך המודל הזה חייב להיראות.",
+
+    "counterexample_entered":
+    """
+ה-clauses של שלילת המסקנה, כפי שנכנסו:""",
+
+    "counterexample_reduced":
+    """
+אחרי צמצום לפי ה-clauses בני ליטרל אחד שהחיפוש מצא:""",
+
+    "counterexample_shape":
+    """
+והם, כשקוראים אותם אחורה כנוסחה (בלי לבטל את ה-Skolemization,
+כדי שה-witnesses יישארו):""",
+
+    "counterexample_together":
+    """
+כל מודל נגדי חייב לקיים את זה, יחד עם ההנחות.""",
+
+    "counterexample_needed":
+    """
+ושלילתה היא מה שהמסקנה היתה צריכה כדי להתקיים:""",
+
+    "counterexample_nothing":
+    """
+לא נשאר דבר משלילת המסקנה -- היא נצרכה כולה.""",
+
+    "counterexample_refused_focused":
+    """
+לא נבנה מודל נגדי: זה ה-KB הממוקד, וההצבה בו היא ניחוש.""",
+
+    "counterexample_refused_support":
+    """
+לא נבנה מודל נגדי: החיפוש רץ עם set of support, ולכן הריקנות
+שלו אינה מעידה על ספיקות.""",
+
 }
 
 

@@ -136,6 +136,7 @@ still match what each docstring claims.
 | `SET_OF_SUPPORT` | allow only inferences that touch the negated conclusion |
 | `TALL_BRACKETS` | draw grouping brackets at their real height, as above |
 | `EXPLAIN_CHOICE` | off by default; on, it prints the runners-up after each step and the key that beat them |
+| `EXPLAIN_COUNTEREXAMPLE` | experimental; on, a saturated search is read backwards into the shape a counter-model must have |
 | `LANGUAGE` | `"he"` or `"en"` — the narration's language; the text direction follows from it |
 | `NARRATE` | off makes `prove` a silent library call |
 

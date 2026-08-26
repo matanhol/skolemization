@@ -606,6 +606,28 @@ different search; if it ever finds a genuinely new clause it says so rather than
 that would mean a bug. It lives inside `run_resolution_search` (only there is `ever_seen` in
 scope, which is what distinguishes "already in the KB" from "derived earlier and dropped").
 
+**A saturated KB can be read backwards into a counter-model**
+(`counterexample.py`, `config.EXPLAIN_COUNTEREXAMPLE`, **off**, experimental). Refutation
+completeness has a second half: a clause set saturated under a complete calculus with no □ in it
+*is* satisfiable, and the usual proof is constructive. So the clauses that came from the negated
+conclusion say what any counter-model must look like. The pass takes those clauses — `preprocess`
+already reports them as `Preprocessed.conclusion_clauses` — lets the KB's units simplify them, and
+undoes the pipeline: step 7 back into a conjunction of disjunctions, step 5 into a universal
+closure, step 2 folding `¬A ∨ B` back into `A → B`, and step 1 negating the result to say what the
+conclusion would have needed. **Step 4 is deliberately not undone**: keeping the Skolem witnesses is
+what makes the output a statement about named objects rather than a re-quantified formula. On
+`phi1_implies_phi2` it comes out as `¬P(c4) ∧ ∀x ∀y ¬Q(x, y)` — Q empty, c4 not P — which is a
+counter-model, verified by brute force: two of them at domain size 2, none at size 1.
+
+Two things it must keep refusing, out loud rather than silently: a **focused** KB (the substitution
+in it is a guess) and a run under **`SET_OF_SUPPORT`** (which never tried the inferences among the
+assumptions, so its running dry certifies nothing). And one asymmetry it depends on: when a unit
+cancels a literal here, **the unit may be instantiated and the clause may not** — instantiating a
+universally quantified unit is universal instantiation and free, while binding a variable of the
+clause would strengthen it. `subsumption.resolve_with_unit` refuses both, because the sweep it
+serves rewrites the KB in place; `counterexample.simplify_against_units` is the weaker guard, for
+clauses being read rather than kept.
+
 **Every saturating search explains itself, the focused pass included** — that is where the reader
 most needs it, since the focused KB is a guess. What differs is the closing sentence, and it must:
 a general KB with nothing left says something about the problem, while a focused KB with nothing
