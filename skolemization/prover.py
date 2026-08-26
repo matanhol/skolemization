@@ -197,10 +197,15 @@ def _build_countermodel(
     )
 
     narration.countermodel(
-        naming.universes(),
         describe(
             final_kb,
-            naming
+            naming,
+            [
+                clause
+                for position, clause
+                in enumerate(prepared.clauses)
+                if position not in prepared.conclusion_clauses
+            ]
         ),
         checks,
         all(

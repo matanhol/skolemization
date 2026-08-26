@@ -31,6 +31,7 @@ when nothing is found it says so rather than implying there is no model.
 
 from itertools import product
 
+from .clauses import canonical_clause
 from .formulas import (
     And,
     Atom,
@@ -1445,81 +1446,292 @@ def _position_label(position):
     return f"{symbol}·{index + 1}"
 
 
+# Variable letters, one per universe: a variable's name is what says which
+# universe it runs over, so nothing has to be annotated with "∈ A".
+
+VARIABLE_LETTERS = "xyzuvw"
+
+
 def describe(
     clauses,
-    naming
+    naming,
+    already_said=()
 ):
 
-    """Every surviving clause as a statement about the model.
+    """What is worth saying about the model, and nothing else.
 
-    Each one keeps its quantifiers: a clause with variables says something
-    about *every* element of the universes those variables range over, and only
-    the ground terms are named.  The wording is the narration's business, so
-    what comes back is structure -- the variables with their universes, the
-    conditions, and what follows.
+    Three kinds of thing come out, because those are the three a reader cannot
+    get from the question itself:
+
+    * a predicate that **never** holds, or **always** does -- a one-literal
+      clause over distinct variables;
+    * everything known about each **witness**, gathered onto its own line
+      rather than scattered over the clause list;
+    * whatever the **search added** that is neither of those.
+
+    ``already_said`` is the assumptions' own clauses as they entered.  A
+    surviving clause that is one of them is the question restated, and saying
+    it back to the reader is what made the earlier version unreadable.
     """
 
-    statements = []
+    said = {
+        canonical_clause(clause)
+        for clause
+        in already_said
+    }
+
+    never = []
+
+    always = []
+
+    facts = {}
+
+    added = []
 
     for clause in clauses:
 
-        variables = []
-
-        for literal in clause:
-
-            for index, argument in enumerate(
-                literal.atom.args
-            ):
-
-                _variables_in(
-                    argument,
-                    (literal.atom.pred, index),
-                    naming,
-                    variables
-                )
-
-        statements.append(
-            {
-                "variables": variables,
-                "conditions": [
-                    _render_literal(literal, naming)
-                    for literal
-                    in clause
-                    if literal.negated
-                ],
-                "consequences": [
-                    _render_literal(literal, naming)
-                    for literal
-                    in clause
-                    if not literal.negated
-                ],
-            }
+        universal = _universal_unit(
+            clause
         )
 
-    return statements
+        if universal is not None:
+
+            predicate, negated = universal
+
+            (
+                never
+                if negated
+                else always
+            ).append(
+                predicate
+            )
+
+            continue
+
+        statement = _statement(
+            clause,
+            naming
+        )
+
+        mentioned = _witnesses_in(
+            clause,
+            naming
+        )
+
+        if mentioned:
+
+            for name in mentioned:
+
+                facts.setdefault(
+                    name,
+                    []
+                ).append(
+                    statement
+                )
+
+            continue
+
+        if canonical_clause(clause) in said:
+            continue
+
+        added.append(
+            statement
+        )
+
+    return {
+        "never": never,
+        "always": always,
+        "witnesses": [
+            (
+                name,
+                term,
+                facts.get(name, [])
+            )
+            for name, _, term
+            in naming.witnesses
+        ],
+        "added": added,
+    }
 
 
-def _variables_in(
+def _universal_unit(
+    clause
+):
+
+    """``(predicate, negated)`` when the clause says a predicate never or always holds.
+
+    One literal, every argument a distinct variable: ``¬D(x)`` is "nothing is a
+    D", ``P(x, y)`` is "P holds of every pair".  Anything mentioning a term is
+    about particular elements and belongs to a witness instead.
+    """
+
+    if len(clause) != 1:
+        return None
+
+    literal = clause[0]
+
+    arguments = literal.atom.args
+
+    if not all(
+        argument.is_var
+        for argument
+        in arguments
+    ):
+
+        return None
+
+    if len(
+        {
+            argument.name
+            for argument
+            in arguments
+        }
+    ) != len(arguments):
+
+        return None
+
+    return (
+        literal.atom.pred,
+        literal.negated
+    )
+
+
+def _witnesses_in(
+    clause,
+    naming
+):
+
+    """Every named witness the clause mentions, in order."""
+
+    found = []
+
+    def walk(term):
+
+        name = naming.name_of(
+            term
+        )
+
+        if name is not None and name not in found:
+
+            found.append(
+                name
+            )
+
+        for argument in term.args:
+
+            walk(
+                argument
+            )
+
+    for literal in clause:
+
+        for argument in literal.atom.args:
+
+            walk(
+                argument
+            )
+
+    return found
+
+
+def _statement(
+    clause,
+    naming
+):
+
+    """One clause as ``(variables, conditions, consequences)`` for the narration."""
+
+    renaming = _variable_names(
+        clause,
+        naming
+    )
+
+    return {
+        "variables": sorted(
+            set(
+                renaming.values()
+            )
+        ),
+        "conditions": [
+            _render_literal(literal, naming, renaming)
+            for literal
+            in clause
+            if literal.negated
+        ],
+        "consequences": [
+            _render_literal(literal, naming, renaming)
+            for literal
+            in clause
+            if not literal.negated
+        ],
+    }
+
+
+def _variable_names(
+    clause,
+    naming
+):
+
+    """Rename the clause's variables so the letter says which universe.
+
+    ``x`` for the first universe, ``y`` for the second, and a number when one
+    clause needs two variables from the same one.
+    """
+
+    renaming = {}
+
+    counts = {}
+
+    for literal in clause:
+
+        for index, argument in enumerate(
+            literal.atom.args
+        ):
+
+            _name_variables(
+                argument,
+                (literal.atom.pred, index),
+                naming,
+                renaming,
+                counts
+            )
+
+    return renaming
+
+
+def _name_variables(
     term,
     position,
     naming,
-    found
+    renaming,
+    counts
 ):
 
-    """Collect ``(variable, universe)`` pairs, in order of first appearance."""
+    """Give every variable a letter belonging to its universe."""
 
     if term.is_var:
 
-        pair = (
-            term.name,
-            naming.letter_for(position)
+        if term.name in renaming:
+            return
+
+        letter = naming.letter_for(
+            position
         )
 
-        if pair not in found:
+        index = LETTERS.index(
+            letter
+        ) % len(VARIABLE_LETTERS)
 
-            found.append(
-                pair
-            )
+        counts[letter] = counts.get(
+            letter,
+            0
+        ) + 1
+
+        renaming[term.name] = (
+            VARIABLE_LETTERS[index]
+            if counts[letter] == 1
+            else f"{VARIABLE_LETTERS[index]}{counts[letter]}"
+        )
 
         return
 
@@ -1527,26 +1739,28 @@ def _variables_in(
         term.args
     ):
 
-        _variables_in(
+        _name_variables(
             argument,
             (term.name, index),
             naming,
-            found
+            renaming,
+            counts
         )
 
 
 def _render_literal(
     literal,
-    naming
+    naming,
+    renaming
 ):
 
-    """``B(a1, y)`` -- witnesses by name, variables as they stand."""
+    """``B(a1, y)`` -- witnesses by name, variables by their universe's letter."""
 
     return (
         literal.atom.pred
         + "("
         + ", ".join(
-            _render_argument(argument, naming)
+            _render_argument(argument, naming, renaming)
             for argument
             in literal.atom.args
         )
@@ -1556,13 +1770,18 @@ def _render_literal(
 
 def _render_argument(
     term,
-    naming
+    naming,
+    renaming
 ):
 
-    """One argument: its witness name if it has one, else itself."""
+    """One argument: a witness name, a renamed variable, or a term of those."""
 
     if term.is_var:
-        return term.name
+
+        return renaming.get(
+            term.name,
+            term.name
+        )
 
     name = naming.name_of(
         term
@@ -1575,7 +1794,7 @@ def _render_argument(
         term.name
         + "("
         + ", ".join(
-            _render_argument(argument, naming)
+            _render_argument(argument, naming, renaming)
             for argument
             in term.args
         )

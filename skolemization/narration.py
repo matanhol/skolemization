@@ -2000,19 +2000,17 @@ def unit_sweep_nothing():
 # ================================================================
 
 def countermodel(
-    universes,
-    statements,
+    description,
     checks,
     holds
 ):
 
-    """The model a saturated KB was hiding, described rather than enumerated.
+    """The model a saturated KB was hiding, in the facts the question does not already give.
 
-    Universals stay universal: a clause about every element says so, instead of
-    being unrolled over a domain that was never part of the question.  Only the
-    ground terms are named, each in its own universe, so a Skolem term written
-    into another argument place is visibly a different kind of thing from the
-    constant it was built from.
+    What a reader cannot get from the question is what gets said: which
+    predicates never hold, everything known about each witness, and whatever
+    the search added on top.  The universes are not explained -- the symbols
+    carry them, ``a1`` against ``b1``, ``x`` against ``y``.
     """
 
     say(
@@ -2040,59 +2038,67 @@ def countermodel(
         phrase("countermodel_intro_3")
     )
 
-    say(
-        phrase("countermodel_universes")
-    )
+    for key, predicates in (
+        ("countermodel_never", description["never"]),
+        ("countermodel_always", description["always"])
+    ):
 
-    for letter, positions, witnesses in universes:
+        if not predicates:
+            continue
 
         say(
-            "    "
+            "\n"
             + phrase(
-                "countermodel_universe",
-                letter=ltr(letter),
-                positions=ltr(
-                    ", ".join(positions)
+                key,
+                predicates=ltr(
+                    ", ".join(predicates)
                 )
             )
         )
 
-        if not witnesses:
+    if description["witnesses"]:
+
+        say(
+            phrase("countermodel_witnesses_header")
+        )
+
+    for name, term, facts in description["witnesses"]:
+
+        say(
+            phrase(
+                "countermodel_witness",
+                name=ltr(name),
+                term=ltr(term)
+            )
+        )
+
+        if not facts:
 
             say(
-                "        "
-                + phrase("countermodel_no_witnesses")
+                phrase("countermodel_witness_nothing")
             )
 
             continue
 
-        say(
-            "        "
-            + phrase(
-                "countermodel_witnesses",
-                witnesses=ltr(
-                    ", ".join(
-                        f"{name} = {term}"
-                        for name, term
-                        in witnesses
-                    )
-                )
+        for statement in facts:
+
+            _say_statement(
+                statement,
+                "        "
             )
+
+    if description["added"]:
+
+        say(
+            phrase("countermodel_added")
         )
 
-    say(
-        phrase("countermodel_facts")
-    )
+        for statement in description["added"]:
 
-    for statement in statements:
-
-        _say_statement(
-            statement
-        )
-
-    say(
-        phrase("countermodel_size")
-    )
+            _say_statement(
+                statement,
+                "    "
+            )
 
     say(
         phrase("countermodel_check")
@@ -2138,28 +2144,26 @@ def countermodel(
 
 
 def _say_statement(
-    statement
+    statement,
+    indent
 ):
 
-    """One clause of the model, with its quantifiers left alone."""
+    """One fact about the model, on one line where it fits.
 
-    indent = (
-        "        "
-        if statement["variables"]
-        else "    "
-    )
+    A clause with variables keeps them -- ``for every y: B(a1, y)`` -- and the
+    letter is what says which universe ``y`` runs over.
+    """
+
+    parts = []
 
     if statement["variables"]:
 
-        say(
-            "    "
-            + phrase(
+        parts.append(
+            phrase(
                 "countermodel_for_every",
                 variables=ltr(
                     ", ".join(
-                        f"{variable} ∈ {universe}"
-                        for variable, universe
-                        in statement["variables"]
+                        statement["variables"]
                     )
                 )
             )
@@ -2173,11 +2177,28 @@ def _say_statement(
         "consequences"
     ]
 
-    if conditions and consequences:
+    # A fact about named elements is stated, not quantified: "not D(a1)", never
+    # "never D(a1)", which reads as a rule about something that recurs.
+    if not statement["variables"] and len(conditions) + len(consequences) == 1:
 
         say(
             indent
             + phrase(
+                "countermodel_fact_not"
+                if conditions
+                else "countermodel_fact_holds",
+                fact=ltr(
+                    (conditions + consequences)[0]
+                )
+            )
+        )
+
+        return
+
+    if conditions and consequences:
+
+        parts.append(
+            phrase(
                 "countermodel_if_then",
                 conditions=ltr(
                     " ∧ ".join(conditions)
@@ -2188,30 +2209,31 @@ def _say_statement(
             )
         )
 
-        return
+    elif conditions:
 
-    if conditions:
-
-        say(
-            indent
-            + phrase(
-                "countermodel_never",
+        parts.append(
+            phrase(
+                "countermodel_not",
                 conditions=ltr(
                     " ∧ ".join(conditions)
                 )
             )
         )
 
-        return
+    else:
+
+        parts.append(
+            phrase(
+                "countermodel_holds",
+                consequences=ltr(
+                    " ∨ ".join(consequences)
+                )
+            )
+        )
 
     say(
         indent
-        + phrase(
-            "countermodel_always",
-            consequences=ltr(
-                " ∨ ".join(consequences)
-            )
-        )
+        + "  ".join(parts)
     )
 
 

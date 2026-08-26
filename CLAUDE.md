@@ -619,11 +619,18 @@ unless something links them, and a Skolem term written into `F`'s second place b
 with the constant it was built from. Inference runs over the clauses **as they entered**, since a
 link made by a clause later subsumed is still a fact about the vocabulary.
 
-**Universals stay universal.** Each surviving clause prints as one statement with its quantifiers
-intact — `for every x ∈ A, y ∈ B: never F(x, y) ∧ B(x, y)` — and only ground terms are named, each
-in its own universe (`a1 = c`, and a Skolem application in `B` would be `b1`). No witness is invented
-that the clauses do not force, and the universes have no stated size: any size holding the witnesses
-will do. Enumerating a domain instead would throw away both facts.
+**The universes are never explained, only used.** Nothing prints a list of argument places: the
+*symbols* carry the sorts — `a1` against `b1` for witnesses, `x` against `y` for variables, one
+letter per universe. Universals stay universal (`for every y: always B(a1, y)`), only ground terms
+are named, and no witness is invented that the clauses do not force.
+
+**What gets said is what the question does not already say.** Three kinds of thing, because those
+are the three a reader cannot get from the assumptions: a predicate that **never** or **always**
+holds (a one-literal clause over distinct variables); everything known about each **witness**,
+gathered onto its own line instead of scattered across a clause list; and whatever the **search
+added** that is neither. A surviving clause that is one of the assumptions' own clauses is dropped —
+`preprocess` reports which positions those are, so a restatement is recognised rather than guessed
+at. Saying them back to the reader is what made the first version unreadable.
 
 **A finite model is built and never printed.** `finite_model` searches domain sizes with DPLL over
 the ground instances; it is the proof that the description is satisfiable rather than merely

@@ -715,22 +715,25 @@ The clauses force two witnesses onto the same element -- there was no choice."""
     """
 The clauses force a function to send an element to itself -- there was no choice.""",
 
-    "countermodel_universes":
+    "countermodel_never":
+    "never holds: {predicates}",
+
+    "countermodel_always":
+    "always holds: {predicates}",
+
+    "countermodel_witnesses_header":
     """
-The universes -- every argument place has a sort, kept apart unless something links them:""",
+The witnesses:""",
 
-    "countermodel_universe":
-    "universe {letter}:  {positions}",
+    "countermodel_witness":
+    "    {name} = {term}:",
 
-    "countermodel_witnesses":
-    "witnesses: {witnesses}",
+    "countermodel_witness_nothing":
+    "        nothing further is known about it.",
 
-    "countermodel_no_witnesses":
-    "no witness needed.",
-
-    "countermodel_facts":
+    "countermodel_added":
     """
-What holds in the model -- everything else is free:""",
+What the search added:""",
 
     "countermodel_for_every":
     "for every {variables}:",
@@ -738,15 +741,17 @@ What holds in the model -- everything else is free:""",
     "countermodel_if_then":
     "if {conditions} then {consequences}",
 
-    "countermodel_never":
+    "countermodel_not":
     "never {conditions}",
 
-    "countermodel_always":
+    "countermodel_holds":
     "always {consequences}",
 
-    "countermodel_size":
-    """
-The universes are of no fixed size: any size that holds the witnesses will do.""",
+    "countermodel_fact_holds":
+    "{fact}",
+
+    "countermodel_fact_not":
+    "not {fact}",
 
 }
 

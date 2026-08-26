@@ -714,22 +714,25 @@ factoring של C{index}: """,
     """
 ה-clauses מכריחים פונקציה לשלוח איבר לעצמו -- אין ברירה.""",
 
-    "countermodel_universes":
+    "countermodel_never":
+    "לא מתקיים אף פעם: {predicates}",
+
+    "countermodel_always":
+    "מתקיים תמיד: {predicates}",
+
+    "countermodel_witnesses_header":
     """
-העולמות -- לכל מקום בארגומנטים יש סוג, והם הופרדו לפי מה שמופיע בהם:""",
+העדים:""",
 
-    "countermodel_universe":
-    "עולם {letter}:  {positions}",
+    "countermodel_witness":
+    "    {name} = {term}:",
 
-    "countermodel_witnesses":
-    "עדים: {witnesses}",
+    "countermodel_witness_nothing":
+    "        אין עליו מידע נוסף.",
 
-    "countermodel_no_witnesses":
-    "אין צורך בעד.",
-
-    "countermodel_facts":
+    "countermodel_added":
     """
-מה שמתקיים במודל -- וכל השאר חופשי:""",
+מה שהחיפוש הוסיף:""",
 
     "countermodel_for_every":
     "לכל {variables}:",
@@ -737,15 +740,17 @@ factoring של C{index}: """,
     "countermodel_if_then":
     "אם {conditions} אז {consequences}",
 
-    "countermodel_never":
+    "countermodel_not":
     "לא מתקיים {conditions}",
 
-    "countermodel_always":
+    "countermodel_holds":
     "מתקיים {consequences}",
 
-    "countermodel_size":
-    """
-גודל העולמות אינו קבוע: כל גודל שמכיל את העדים מתאים.""",
+    "countermodel_fact_holds":
+    "{fact}",
+
+    "countermodel_fact_not":
+    "לא {fact}",
 
 }
 
