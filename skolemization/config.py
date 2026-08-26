@@ -173,16 +173,29 @@ ONE_FORMULA_AT_A_TIME = False
 # OUTPUT
 # ================================================================
 
+# Which language the narration speaks.  The words live in phrases/, one module
+# per language; "he" is Hebrew and "en" is English, and an unrecognised value
+# raises rather than quietly picking one.
+#
+# The direction the output is laid out in follows from this and is not a
+# setting of its own -- see RTL_OUTPUT below.
+
+LANGUAGE = "he"
+
 # The narration is the point of this package, so it is on by default.
 # Set to False to run the prover silently and just take its return value.
 
 NARRATE = True
 
-# Force right-to-left base direction on every printed line that contains
-# Hebrew, including lines that mix Hebrew with Latin identifiers.
-# Set to False to emit exactly what the original single-file script emitted.
+# Whether the bidi marks are emitted: an RTL base direction on every line that
+# holds right-to-left text, and an LTR isolate around every formula inside one.
+#
+# "auto" follows LANGUAGE -- Hebrew needs them, English would only be littered
+# with invisible characters.  True and False force the question; False is what
+# a byte-for-byte comparison of the narration wants, and what the original
+# single-file script emitted.
 
-RTL_OUTPUT = True
+RTL_OUTPUT = "auto"
 
 # How a negated equality is printed: "≠" gives  c2 ≠ c3, and "not" gives
 # ¬(c2 = c3).  Nothing but the text changes -- x != y, x ≠ y and not (x = y)

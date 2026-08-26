@@ -30,8 +30,10 @@ terminals (VS Code) ignore the marks and show the text unchanged.
 """
 
 import re
+import unicodedata
 
 from . import config
+from .phrases import direction
 
 
 # U+2067 RIGHT-TO-LEFT ISOLATE ... U+2069 POP DIRECTIONAL ISOLATE.
@@ -46,23 +48,52 @@ PDI = "⁩"
 
 LRI = "⁦"
 
-HEBREW_RE = re.compile(
-    r"[֐-׿]"
+# The bidi classes that make a character *strongly* right-to-left: R is
+# Hebrew, N'Ko, Adlam and the rest; AL is Arabic, Syriac and Thaana.  Asking
+# unicodedata rather than matching a Hebrew block is both shorter and honest --
+# it is the property the terminal itself lays the line out by, so a formula
+# carrying an Arabic name would be handled instead of quietly scrambled.
+#
+# There is no language-to-direction table in the standard library (CLDR has
+# one, but that means ICU, and this package has no dependencies), which is why
+# a language states its own direction in phrases/.
+
+STRONGLY_RTL = (
+    "R",
+    "AL",
 )
 
 
 def line_is_rtl(line):
-    """True if the line holds any Hebrew, and so should be laid out RTL."""
+    """True if the line holds a right-to-left character, and so must be laid out RTL."""
+
+    return any(
+        unicodedata.bidirectional(character) in STRONGLY_RTL
+        for character
+        in line
+    )
+
+
+def marks_wanted():
+    """Should the bidi marks be emitted at all?
+
+    ``config.RTL_OUTPUT`` is normally ``"auto"``, meaning "whatever the
+    language needs": Hebrew is written right to left and needs them, English is
+    not and would only be littered with invisible characters.  ``True`` and
+    ``False`` force the question, and ``False`` is what a byte-for-byte
+    comparison of the narration wants.
+    """
+
+    if config.RTL_OUTPUT == "auto":
+        return direction() == "rtl"
 
     return bool(
-        HEBREW_RE.search(
-            line
-        )
+        config.RTL_OUTPUT
     )
 
 
 def rtl(text):
-    """Wrap each Hebrew-bearing line of ``text`` in an RTL isolate.
+    """Wrap each right-to-left line of ``text`` in an RTL isolate.
 
     Lines are handled one at a time: an isolate must not span a newline, or
     the terminal is left with an unpopped isolate at the end of a paragraph.
@@ -95,10 +126,11 @@ def ltr(text):
     letters alike -- so it renders as one left-to-right unit sitting inside
     the right-to-left line.
 
-    A no-op when ``config.RTL_OUTPUT`` is off, so output stays byte-identical.
+    A no-op when the marks are not wanted -- an English transcript, or output
+    being compared byte for byte -- so nothing invisible ends up in the text.
     """
 
-    if not config.RTL_OUTPUT:
+    if not marks_wanted():
         return text
 
     return (
@@ -126,7 +158,7 @@ def say(*values, sep=" ", end="\n"):
         in values
     )
 
-    if config.RTL_OUTPUT:
+    if marks_wanted():
         text = rtl(text)
 
     print(

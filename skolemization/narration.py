@@ -1,18 +1,22 @@
-"""Everything this prover says, in one place.
+"""How everything this prover says is laid out.
 
 The core modules do not print.  They call an *event* here -- one function per
-thing that happened, not one per line of output -- and this module decides how
-it is worded and laid out::
+thing that happened, not one per line of output -- and this module decides what
+the reader sees::
 
     narration.resolvent_added(resolvent)
 
-    ->  מוסיפים את ה-resolvent ל-KB:
+    ->  <the phrase for "resolvent_added">
             ¬D(x) ∨ B(x, y)
 
-So this is the file to open to reword the commentary, to add a step, or to
-translate the whole thing.  No Hebrew should exist anywhere else in the
-package.  Output goes through ``say`` (output.py), which handles right-to-left
-direction and honours ``config.NARRATE``.
+The *words* are not here: they live in phrases/, one module per language, and
+are reached through ``phrase(key)`` and ``phrase_table(name)``.  So this file
+is the one to open to change a layout, add a step, or decide which bindings are
+worth showing -- and phrases/hebrew.py is the one to open to reword a sentence
+or to add a language.
+
+Output goes through ``say`` (output.py), which sets the direction the language
+is written in and honours ``config.NARRATE``.
 
 Sections below follow the pipeline: prover -> preprocess -> search ->
 subsumption -> focus.
@@ -36,6 +40,10 @@ from .output import (
     say,
     say_block,
 )
+from .phrases import (
+    phrase,
+    phrase_table,
+)
 from .resolution import meaningful_substitutions
 from .unification import apply_substitution_literal
 
@@ -49,11 +57,7 @@ BANNER = "#" * 70
 # PROVER
 # ================================================================
 
-PROPERTY_NAMES = {
-    "symmetric": "סימטרי",
-    "transitive": "טרנזיטיבי",
-    "reflexive": "רפלקסיבי",
-}
+
 
 
 def relation_axioms(
@@ -68,7 +72,7 @@ def relation_axioms(
     )
 
     say(
-        "0. הוספת תכונות של יחסים ל-KB"
+        phrase("relation_axioms_1")
     )
 
     say(
@@ -78,7 +82,7 @@ def relation_axioms(
     if not generated_axioms:
 
         say(
-            "\nלא הוגדרו תכונות מיוחדות של יחסים."
+            phrase("relation_axioms_2")
         )
 
         return
@@ -90,19 +94,18 @@ def relation_axioms(
     ) in generated_axioms:
 
         description = (
-            PROPERTY_NAMES.get(
+            phrase_table("property_names").get(
                 property_name,
-                PROPERTY_NAMES["reflexive"]
+                phrase_table("property_names")["reflexive"]
             )
         )
 
         say(
-            f"\n{relation} הוגדר כיחס "
-            f"{description}."
+            phrase("relation_axioms_3", relation=relation, description=description)
         )
 
         say(
-            "מוסיפים ל-KB:"
+            phrase("relation_axioms_4")
         )
 
         say(
@@ -134,37 +137,35 @@ def reflexivity_for_equality(
     ]
 
     say(
-        f"\nהשוויון מטופל בכלל היסק ({rule}) "
-        "ולא באקסיומות:"
+        phrase("reflexivity_for_equality_1", rule=rule)
     )
 
     say(
-        "אין צורך בסימטריה, בטרנזיטיביות "
-        "ובאקסיומות קונגרואנציה."
+        phrase("reflexivity_for_equality_2")
     )
 
     say(
-        "האקסיומה היחידה שנשארת היא הרפלקסיביות."
+        phrase("reflexivity_for_equality_3")
     )
 
     say(
-        "ליטרל שכתוב "
+        phrase("reflexivity_for_equality_4")
         + ltr(
             negated_equality_str("c", "c")
         )
-        + " נמחק מאליו -- הוא שקר;"
+        + phrase("reflexivity_for_equality_5")
     )
 
     say(
-        "אבל ליטרל כמו "
+        phrase("reflexivity_for_equality_6")
         + ltr(
             negated_equality_str("f(x)", "f(y)")
         )
-        + ", ששני צדדיו משתווים רק אחרי הצבה,"
+        + phrase("reflexivity_for_equality_7")
     )
 
     say(
-        "נסגר מול האקסיומה הזאת:"
+        phrase("reflexivity_for_equality_8")
     )
 
     say(
@@ -179,7 +180,7 @@ def working_assumptions(
     """The assumptions the search will run on, generated axioms included."""
 
     say(
-        "\nההנחות שאיתן נעבוד:"
+        phrase("working_assumptions")
     )
 
     for i, assumption in enumerate(
@@ -199,7 +200,7 @@ def conclusion(
     """The conclusion being tested, as written, before it is negated."""
 
     say(
-        "\nהמסקנה:"
+        phrase("conclusion")
     )
 
     say(
@@ -252,7 +253,7 @@ def focused_search_failed(
     )
 
     say(
-        "החיפוש הממוקד הסתיים ללא הוכחה"
+        phrase("focused_search_failed_1")
     )
 
     say(
@@ -260,12 +261,11 @@ def focused_search_failed(
     )
 
     say(
-        f"\nהמיקוד ב-{witness} הוא heuristic בלבד."
+        phrase("focused_search_failed_2", witness=witness)
     )
 
     say(
-        "לכן חוזרים ל-KB המקורי "
-        "ומנסים Resolution כללי."
+        phrase("focused_search_failed_3")
     )
 
 
@@ -294,7 +294,7 @@ def equivalence_direction(
     )
 
     say(
-        f"בדיקת כיוון {index}:  "
+        phrase("equivalence_direction", index=index)
         + ltr(
             f"{from_name} ⊨ {to_name}"
         )
@@ -319,7 +319,7 @@ def equivalence_verdict(
     )
 
     say(
-        "תוצאה סופית"
+        phrase("equivalence_verdict_1")
     )
 
     say(
@@ -340,11 +340,11 @@ def equivalence_verdict(
     if result.equivalent:
 
         say(
-            "✅ שתי הגרירות הוכחו."
+            phrase("equivalence_verdict_2")
         )
 
         say(
-            "לכן:"
+            phrase("equivalence_verdict_3")
         )
 
         say(
@@ -372,11 +372,11 @@ def equivalence_verdict(
         return
 
     say(
-        "לא הוכחו שתי הגרירות."
+        phrase("equivalence_verdict_4")
     )
 
     say(
-        "לכן ה-solver לא הוכיח שקילות."
+        phrase("equivalence_verdict_5")
     )
 
 
@@ -388,7 +388,7 @@ def _one_direction_only(
     """Exactly one entailment went through, so there is no equivalence yet."""
 
     say(
-        "הוכח:"
+        phrase("_one_direction_only_1")
     )
 
     say(
@@ -396,7 +396,7 @@ def _one_direction_only(
     )
 
     say(
-        "אבל הכיוון:"
+        phrase("_one_direction_only_2")
     )
 
     say(
@@ -404,7 +404,7 @@ def _one_direction_only(
     )
 
     say(
-        "לא הוכח."
+        phrase("_one_direction_only_3")
     )
 
 
@@ -412,15 +412,7 @@ def _one_direction_only(
 # PREPROCESS
 # ================================================================
 
-STEP_TITLES = {
-    1: "שוללים את המסקנה ומוסיפים אותה ל-KB",
-    2: "ביטול גרירות",
-    3: "הכנסת השלילות פנימה",
-    4: "Skolemization",
-    5: "הורדת כמתי ∀",
-    6: "מעבר ל-CNF",
-    7: "ה-KB בצורת clauses",
-}
+
 
 
 def step_header(
@@ -436,7 +428,7 @@ def step_header(
 
     say(
         f"{number}. "
-        f"{STEP_TITLES[number]}"
+        f"{phrase_table("step_titles")[number]}"
     )
 
     say(
@@ -451,7 +443,7 @@ def implication_rule():
     say(
         "\n"
         + ltr("P → Q")
-        + "   הופך ל-   "
+        + phrase("implication_rule")
         + ltr("¬P ∨ Q")
     )
 
@@ -463,21 +455,12 @@ def cnf_rule():
     say(
         "\n"
         + ltr("P ∨ (Q ∧ R)")
-        + "  הופך ל-  "
+        + phrase("cnf_rule")
         + ltr("(P ∨ Q) ∧ (P ∨ R)")
     )
 
 
-RULE_NAMES = {
-    rewrite.IMPLICATION: "ביטול גרירה",
-    rewrite.DOUBLE_NEGATION: "שלילה כפולה",
-    rewrite.DE_MORGAN_AND: "דה-מורגן",
-    rewrite.DE_MORGAN_OR: "דה-מורגן",
-    rewrite.NOT_FORALL: "שלילת כמת ∀",
-    rewrite.NOT_EXISTS: "שלילת כמת ∃",
-    rewrite.DROP_FORALL: "הורדת כמת ∀",
-    rewrite.DISTRIBUTE: "פילוג",
-}
+
 
 
 def rewrites(
@@ -496,7 +479,7 @@ def rewrites(
     for record in records:
 
         say(
-            f"  {RULE_NAMES[record.rule]}:"
+            f"  {phrase_table("rule_names")[record.rule]}:"
         )
 
         say_block(
@@ -527,7 +510,7 @@ def step_kb(
 
     show_formulas(
         formulas,
-        "ה-KB בסוף השלב"
+        phrase("step_kb")
     )
 
 
@@ -536,7 +519,7 @@ def nothing_changed():
     """The step ran but left every formula exactly as it was."""
 
     say(
-        "\nאף נוסחה לא השתנתה בשלב זה."
+        phrase("nothing_changed")
     )
 
 
@@ -549,7 +532,7 @@ def formula_unchanged():
     """
 
     say(
-        "הנוסחה לא השתנתה בשלב זה."
+        phrase("formula_unchanged")
     )
 
 
@@ -600,7 +583,7 @@ def formula_state_before(
     """
 
     say_block(
-        "לפני: ",
+        phrase("formula_state_before"),
         formula_str(
             formula
         )
@@ -614,7 +597,7 @@ def formula_after(
     """The same formula once the transform has run."""
 
     say_block(
-        "אחרי: ",
+        phrase("formula_after"),
         formula_str(
             formula
         )
@@ -663,7 +646,7 @@ def walk_header(
     )
 
     say(
-        f"נוסחה F{index} מתוך {total}"
+        phrase("walk_header", index=index, total=total)
     )
 
     say(
@@ -695,7 +678,7 @@ def walk_step(
 
     say(
         f"{number}. "
-        f"{STEP_TITLES[number]}"
+        f"{phrase_table("step_titles")[number]}"
     )
 
     say(
@@ -712,7 +695,7 @@ def walk_clauses(
 
     show_kb(
         clauses,
-        f"7. ה-clauses של F{index}"
+        phrase("walk_clauses", index=index)
     )
 
 
@@ -725,7 +708,7 @@ def skolem_explanations(
     if not explanations:
 
         say(
-            "אין כמת קיומי לסלק."
+            phrase("skolem_explanations_1")
         )
 
     for (
@@ -738,7 +721,7 @@ def skolem_explanations(
 
             say(
                 ltr(f"∃{variable}")
-                + " נמצא תחת "
+                + phrase("skolem_explanations_2")
                 +
                 ltr(
                     ", ".join(
@@ -750,23 +733,22 @@ def skolem_explanations(
             )
 
             say(
-                "לכן הוא עשוי להיות תלוי בהם."
+                phrase("skolem_explanations_3")
             )
 
             say(
-                "מציבים:"
+                phrase("skolem_explanations_4")
             )
 
         else:
 
             say(
                 ltr(f"∃{variable}")
-                + " אינו תלוי "
-                "במשתנה אוניברסלי."
+                + phrase("skolem_explanations_5")
             )
 
             say(
-                "לכן בוחרים witness קבוע:"
+                phrase("skolem_explanations_6")
             )
 
         say(
@@ -782,7 +764,7 @@ def clause_kb(
 
     show_kb(
         clauses,
-        "KB לפני Resolution"
+        phrase("clause_kb")
     )
 
 
@@ -790,7 +772,7 @@ def clause_kb(
 # SEARCH
 # ================================================================
 
-GENERAL_SEARCH = "Resolution כללי"
+GENERAL_SEARCH = phrase("module")
 
 
 def focused_search_title(
@@ -799,7 +781,7 @@ def focused_search_title(
 
     """What the focused pass calls itself, naming the witness it pinned."""
 
-    return f"Resolution ממוקד ב-{witness}"
+    return phrase("focused_search_title", witness=witness)
 
 
 def search_header(
@@ -825,7 +807,7 @@ def search_header(
     if config.EQUALITY_RULE != "none":
 
         say(
-            "\nכללי ההיסק: Resolution, Factoring ו-"
+            phrase("search_header_1")
             + EQUALITY_RULE_NAMES[
                 config.EQUALITY_RULE
             ]
@@ -834,7 +816,7 @@ def search_header(
 
     show_kb(
         kb,
-        "KB בתחילת החיפוש"
+        phrase("search_header_2")
     )
 
 
@@ -845,31 +827,31 @@ def set_of_support(
     """The search is restricted to steps that touch the negated conclusion."""
 
     say(
-        "\nחיפוש עם set of support:"
+        phrase("set_of_support_1")
     )
 
     say(
-        "כל צעד חייב להשתמש לפחות ב-clause אחד מקבוצת התמיכה,"
+        phrase("set_of_support_2")
     )
 
     say(
-        "וכל תוצאה מצטרפת אליה. ההנחות לבדן עקביות,"
+        phrase("set_of_support_3")
     )
 
     say(
-        "ולכן שום סתירה לא יכולה לצאת מהן בלי המסקנה."
+        phrase("set_of_support_4")
     )
 
     if not seeds:
 
         say(
-            "\nקבוצת התמיכה ריקה -- אין הגבלה בפועל."
+            phrase("set_of_support_5")
         )
 
         return
 
     say(
-        "\nקבוצת התמיכה ההתחלתית -- שלילת המסקנה:"
+        phrase("set_of_support_6")
     )
 
     for clause in seeds:
@@ -886,19 +868,19 @@ def set_of_support(
     if config.EQUALITY_RULE == "superposition":
 
         say(
-            "\nאזהרה: set of support יחד עם Superposition."
+            phrase("set_of_support_7")
         )
 
         say(
-            "שתי ההגבלות נכונות כל אחת לחוד, אבל הן לא מתחברות --"
+            phrase("set_of_support_8")
         )
 
         say(
-            "כל אחת מהן חוסמת צעדים שהשנייה נשענת עליהם, וההוכחה עלולה"
+            phrase("set_of_support_9")
         )
 
         say(
-            "לא להימצא. זה נמדד ממש על השאלה הזאת. עדיף Paramodulation."
+            phrase("set_of_support_10")
         )
 
 
@@ -912,19 +894,19 @@ def set_of_support_caveat():
     """
 
     say(
-        "\nשימו לב: החיפוש הוגבל ל-set of support,"
+        phrase("set_of_support_caveat_1")
     )
 
     say(
-        "כלומר נבדקו רק צעדים שנוגעים במסקנה."
+        phrase("set_of_support_caveat_2")
     )
 
     say(
-        "אם ההנחות עצמן סותרות זו את זו, המסקנה נובעת מהן באופן ריק --"
+        phrase("set_of_support_caveat_3")
     )
 
     say(
-        "וההגבלה הזאת לא היתה מוצאת את זה. כדי לבדוק, כבו את SET_OF_SUPPORT."
+        phrase("set_of_support_caveat_4")
     )
 
 
@@ -946,12 +928,11 @@ def saturated():
     )
 
     say(
-        "\nאין resolvent חדש "
-        "שאפשר להוסיף."
+        phrase("saturated_1")
     )
 
     say(
-        "לא נמצאה הפסוקית הריקה □."
+        phrase("saturated_2")
     )
 
 
@@ -1005,7 +986,7 @@ def step_result(
     if inference.before_dropping is None:
 
         say(
-            "\nמתקבל:"
+            phrase("step_result_1")
         )
 
         say(
@@ -1015,7 +996,7 @@ def step_result(
         return
 
     say(
-        "\nמתקבל:"
+        phrase("step_result_2")
     )
 
     say(
@@ -1023,15 +1004,15 @@ def step_result(
     )
 
     say(
-        "\nליטרל מהצורה "
+        phrase("step_result_3")
         + ltr(
             negated_equality_str("t", "t")
         )
-        + " הוא שקר, ולכן אינו יכול לתרום דבר לפסוקית."
+        + phrase("step_result_4")
     )
 
     say(
-        "מוחקים אותו, ונשאר:"
+        phrase("step_result_5")
     )
 
     say(
@@ -1066,7 +1047,7 @@ def paramodulation_step(
     )
 
     say(
-        "\nמשתמשים בשוויון מתוך:"
+        phrase("paramodulation_step_1")
     )
 
     say(
@@ -1075,7 +1056,7 @@ def paramodulation_step(
     )
 
     say(
-        "\nכדי להחליף שווה בשווה בתוך:"
+        phrase("paramodulation_step_2")
     )
 
     say(
@@ -1090,7 +1071,7 @@ def paramodulation_step(
     if replacement is None:
 
         say(
-            "\nהשוויון:",
+            phrase("paramodulation_step_3"),
             ltr(
                 str(
                     inference.literal1
@@ -1099,7 +1080,7 @@ def paramodulation_step(
         )
 
         say(
-            "הליטרל שנכתב מחדש:",
+            phrase("paramodulation_step_4"),
             ltr(
                 str(
                     inference.literal2
@@ -1120,17 +1101,17 @@ def paramodulation_step(
         return
 
     say(
-        "\nהכיוון: מתאימים את הצד "
+        phrase("paramodulation_step_5")
         + ltr(
             str(
                 replacement.source
             )
         )
-        + " של השוויון לאיבר בתוך הפסוקית,"
+        + phrase("paramodulation_step_6")
     )
 
     say(
-        "ומציבים במקומו את הצד "
+        phrase("paramodulation_step_7")
         + ltr(
             str(
                 replacement.target
@@ -1140,7 +1121,7 @@ def paramodulation_step(
     )
 
     say(
-        "\nהליטרל שנכתב מחדש:",
+        phrase("paramodulation_step_8"),
         ltr(
             str(
                 inference.literal2
@@ -1149,7 +1130,7 @@ def paramodulation_step(
     )
 
     say(
-        "האיבר שהותאם, והוחלף:",
+        phrase("paramodulation_step_9"),
         ltr(
             str(
                 replacement.subterm
@@ -1162,7 +1143,7 @@ def paramodulation_step(
     )
 
     say(
-        "\nההחלפה עצמה:"
+        phrase("paramodulation_step_10")
     )
 
     say(
@@ -1174,8 +1155,7 @@ def paramodulation_step(
     )
 
     say(
-        "\nכך מגיעים לקונגרואנציה בלי אקסיומות: "
-        "הכלל מחליף את המופע בתוך האיבר."
+        phrase("paramodulation_step_11")
     )
 
     step_result(
@@ -1196,12 +1176,12 @@ def paramodulation_bindings(
     """
 
     say(
-        "\nההצבה שנדרשה כדי להתאים ביניהם:"
+        phrase("paramodulation_bindings_1")
     )
 
     for label, literal in (
-        ("מתוך השוויון", inference.literal1),
-        ("מתוך הפסוקית שנכתבת מחדש", inference.literal2)
+        (phrase("paramodulation_bindings_2"), inference.literal1),
+        (phrase("paramodulation_bindings_3"), inference.literal2)
     ):
 
         bindings = (
@@ -1216,7 +1196,7 @@ def paramodulation_bindings(
         if not bindings:
 
             say(
-                f"    {label}: אין צורך בהצבה"
+                phrase("paramodulation_bindings_4", label=label)
             )
 
             continue
@@ -1314,7 +1294,7 @@ def factoring_step(
     )
 
     say(
-        "\nבוחרים:"
+        phrase("factoring_step_1")
     )
 
     say(
@@ -1323,8 +1303,7 @@ def factoring_step(
     )
 
     say(
-        "\nשני ליטרלים באותה פסוקית, "
-        "עם אותו סימן:"
+        phrase("factoring_step_2")
     )
 
     say(
@@ -1342,8 +1321,7 @@ def factoring_step(
     )
 
     say(
-        "\nלאחר ההצבה הם זהים, "
-        "ולכן ממזגים אותם לליטרל אחד."
+        phrase("factoring_step_3")
     )
 
     step_result(
@@ -1383,7 +1361,7 @@ def resolution_step(
     )
 
     say(
-        "\nבוחרים:"
+        phrase("resolution_step_1")
     )
 
     if len(parents) == 1:
@@ -1394,8 +1372,7 @@ def resolution_step(
         )
 
         say(
-            "מצליבים את הפסוקית "
-            "עם עותק שלה."
+            phrase("resolution_step_2")
         )
 
     else:
@@ -1411,7 +1388,7 @@ def resolution_step(
         )
 
     say(
-        "\nהליטרלים שניתן להצליב:"
+        phrase("resolution_step_3")
     )
 
     # Important:
@@ -1450,13 +1427,13 @@ def substitution_used(
     """The bindings this step needed, or a note that it needed none."""
 
     say(
-        "\nההצבה הדרושה:"
+        phrase("substitution_used_1")
     )
 
     if not substitutions:
 
         say(
-            "    אין צורך בהצבה ממשית."
+            phrase("substitution_used_2")
         )
 
         return
@@ -1480,7 +1457,7 @@ def after_substitution(
     """The two literals once instantiated, and the resolvent left behind."""
 
     say(
-        "\nלאחר ההצבה:"
+        phrase("after_substitution_1")
     )
 
     say(
@@ -1492,8 +1469,7 @@ def after_substitution(
     )
 
     say(
-        "\nהליטרלים זהים פרט לשלילה, "
-        "ולכן מבטלים אותם."
+        phrase("after_substitution_2")
     )
 
     step_result(
@@ -1509,7 +1485,7 @@ def empty_clause(
 
     show_kb(
         kb,
-        "KB הסופי"
+        phrase("empty_clause_1")
     )
 
     say(
@@ -1526,7 +1502,7 @@ def empty_clause(
     )
 
     say(
-        "\nהתקבלה הפסוקית הריקה:"
+        phrase("empty_clause_2")
     )
 
     say(
@@ -1534,16 +1510,15 @@ def empty_clause(
     )
 
     say(
-        "\nנמצאה סתירה."
+        phrase("empty_clause_3")
     )
 
     say(
-        "ההנחות יחד עם שלילת המסקנה "
-        "אינן יכולות להיות אמיתיות יחד."
+        phrase("empty_clause_4")
     )
 
     say(
-        "\nלכן המסקנה נובעת מן ההנחות."
+        phrase("empty_clause_5")
     )
 
 
@@ -1551,14 +1526,7 @@ def empty_clause(
 # order of a key tuple lives in search.STRATEGY_KEY_NAMES; these are only the
 # words.
 
-RANKING_KEY_NAMES = {
-    "depth": "עומק האיברים",
-    "length": "אורך הפסוקית",
-    "rule": "סוג כלל ההיסק",
-    "assignment": "הצורך בהצבה",
-    "weight": "משקל האיברים",
-    "parents": "גודל ההורים",
-}
+
 
 
 def choice_between(
@@ -1580,19 +1548,19 @@ def choice_between(
     if not others:
 
         say(
-            "\nזה היה המועמד היחיד בצעד הזה."
+            phrase("choice_between_1")
         )
 
         return
 
     say(
-        "\nמדוע דווקא הצעד הזה:"
+        phrase("choice_between_2")
     )
 
     for other, other_key in others:
 
         say(
-            "    מולו עמד: "
+            phrase("choice_between_3")
             + ltr(
                 clause_str(
                     other.result
@@ -1610,16 +1578,15 @@ def choice_between(
     if index is None:
 
         say(
-            "    שני המועמדים שקולים בכל המפתחות, "
-            "והבחירה ביניהם שרירותית."
+            phrase("choice_between_4")
         )
 
         return
 
     say(
-        "    הכריע המפתח "
+        phrase("choice_between_5")
         + ltr(
-            RANKING_KEY_NAMES[
+            phrase_table("ranking_key_names")[
                 names[index]
             ]
         )
@@ -1627,7 +1594,7 @@ def choice_between(
         + ltr(
             f"{chosen_key[index]}"
         )
-        + " מול "
+        + phrase("choice_between_6")
         + ltr(
             f"{best_key[index]}"
         )
@@ -1661,7 +1628,7 @@ def resolvent_added(
     """The resolvent joining the KB."""
 
     say(
-        "\nמוסיפים את ה-resolvent ל-KB:"
+        phrase("resolvent_added")
     )
 
     say(
@@ -1677,7 +1644,7 @@ def kb_after_step(
 
     show_kb(
         kb,
-        "KB בסוף הצעד"
+        phrase("kb_after_step")
     )
 
 
@@ -1699,14 +1666,11 @@ def step_limit_reached():
     )
 
     say(
-        f"\nהגענו ל-"
-        f"{config.MAX_RESOLUTION_STEPS} "
-        "צעדי Resolution."
+        phrase("step_limit_reached_1", max_resolution_steps=config.MAX_RESOLUTION_STEPS)
     )
 
     say(
-        "לא נמצאה סתירה, "
-        "אבל החיפוש עדיין לא מוצה."
+        phrase("step_limit_reached_2")
     )
 
 
@@ -1732,13 +1696,13 @@ def redundancy_check_header(
     if parent_count == 1:
 
         say(
-            "בדיקה האם ה-parent הפך למיותר"
+            phrase("redundancy_check_header_1")
         )
 
     else:
 
         say(
-            "בדיקה האם אחד משני ה-parents הפך למיותר"
+            phrase("redundancy_check_header_2")
         )
 
     say(
@@ -1755,18 +1719,17 @@ def no_parent_redundant(
     if parent_count == 1:
 
         say(
-            "\nה-parent לא הפך למיותר."
+            phrase("no_parent_redundant_1")
         )
 
     else:
 
         say(
-            "\nאף אחד משני ה-parents "
-            "לא הפך למיותר."
+            phrase("no_parent_redundant_2")
         )
 
     say(
-        "לכן לא מוחקים דבר."
+        phrase("no_parent_redundant_3")
     )
 
 
@@ -1778,7 +1741,7 @@ def parent_is_redundant(
     """Why a parent is being deleted: the resolvent subsumes it."""
 
     say(
-        "\nה-resolvent החדש:"
+        phrase("parent_is_redundant_1")
     )
 
     say(
@@ -1786,7 +1749,7 @@ def parent_is_redundant(
     )
 
     say(
-        "\nחזק יותר מה-parent:"
+        phrase("parent_is_redundant_2")
     )
 
     say(
@@ -1794,16 +1757,15 @@ def parent_is_redundant(
     )
 
     say(
-        "\nכל מצב שמקיים את ה-resolvent "
-        "ממילא מקיים גם את ה-parent."
+        phrase("parent_is_redundant_3")
     )
 
     say(
-        "לכן ה-parent אינו מוסיף מידע נוסף."
+        phrase("parent_is_redundant_4")
     )
 
     say(
-        "\nמוחקים מה-KB:"
+        phrase("parent_is_redundant_5")
     )
 
     say(
@@ -1830,7 +1792,7 @@ def unit_queue_opened(
     )
 
     say(
-        "סינון לפי clauses בני ליטרל אחד"
+        phrase("unit_queue_opened_1")
     )
 
     say(
@@ -1838,35 +1800,35 @@ def unit_queue_opened(
     )
 
     say(
-        "\nכל clause בן ליטרל אחד נכנס לתור."
+        phrase("unit_queue_opened_2")
     )
 
     say(
-        "בתורו, כל אחד מהם עובר על ה-KB: הוא מבטל את הליטרל"
+        phrase("unit_queue_opened_3")
     )
 
     say(
-        "המשלים שלו בכל clause שמכיל אותו, ומשאיר את השאר;"
+        phrase("unit_queue_opened_4")
     )
 
     say(
-        "ומוחק clause שכבר מכיל את הליטרל שלו עצמו."
+        phrase("unit_queue_opened_5")
     )
 
     say(
-        "הכל בלי שום הצבה -- אחרת מדלגים."
+        phrase("unit_queue_opened_6")
     )
 
     if not queue:
 
         say(
-            "\nהתור ריק: אין כרגע clause בן ליטרל אחד."
+            phrase("unit_queue_opened_7")
         )
 
         return
 
     say(
-        "\nהתור ההתחלתי:"
+        phrase("unit_queue_opened_8")
     )
 
     for clause in queue:
@@ -1888,7 +1850,7 @@ def unit_joined_queue(
     """A resolvent that is a single literal, joining the back of the queue."""
 
     say(
-        "\nה-resolvent הוא בן ליטרל אחד, ולכן נכנס לתור הסינון:"
+        phrase("unit_joined_queue")
     )
 
     say(
@@ -1906,7 +1868,7 @@ def unit_sweep_header():
     """Said once, the first time a sweep actually does something."""
 
     say(
-        "\nצמצום לפי clauses בני ליטרל אחד:"
+        phrase("unit_sweep_header")
     )
 
 
@@ -1925,7 +1887,7 @@ def unit_simplified(
                 unit
             )
         )
-        + "  מבטל ליטרל ב:"
+        + phrase("unit_simplified_1")
     )
 
     say(
@@ -1938,7 +1900,7 @@ def unit_simplified(
     )
 
     say(
-        "  ללא צורך בהצבה, ולכן מחליפים אותו במה שנשאר:"
+        phrase("unit_simplified_2")
     )
 
     say(
@@ -1965,7 +1927,7 @@ def unit_makes_redundant(
                 unit
             )
         )
-        + "  מופיע כמות שהוא ב:"
+        + phrase("unit_makes_redundant_1")
     )
 
     say(
@@ -1978,7 +1940,7 @@ def unit_makes_redundant(
     )
 
     say(
-        "  ה-clause הזה כבר לא מוסיף דבר, ולכן מוחקים אותו."
+        phrase("unit_makes_redundant_2")
     )
 
 
@@ -1996,7 +1958,7 @@ def unit_empty_clause(
                 unit
             )
         )
-        + "  מבטל את הליטרל היחיד ב:"
+        + phrase("unit_empty_clause_1")
     )
 
     say(
@@ -2009,7 +1971,7 @@ def unit_empty_clause(
     )
 
     say(
-        "  לא נשאר כלום -- קיבלנו את הפסוקית הריקה □."
+        phrase("unit_empty_clause_2")
     )
 
 
@@ -2018,7 +1980,7 @@ def unit_sweep_nothing():
     """The sweep ran and found nothing -- said, so the check is visible."""
 
     say(
-        "\nצמצום לפי ליטרלים בודדים: אין מה לצמצם."
+        phrase("unit_sweep_nothing")
     )
 
 
@@ -2036,7 +1998,7 @@ def saturation_header():
     )
 
     say(
-        "למה אי אפשר להמשיך?"
+        phrase("saturation_header_1")
     )
 
     say(
@@ -2044,15 +2006,15 @@ def saturation_header():
     )
 
     say(
-        "\nנעבור על ה-KB הסופי פעמיים:"
+        phrase("saturation_header_2")
     )
 
     say(
-        "קודם נמחק ממנו כל מה שמיותר,"
+        phrase("saturation_header_3")
     )
 
     say(
-        "ואז נראה מה כל צמד שנשאר מסוגל לתת."
+        phrase("saturation_header_4")
     )
 
 
@@ -2068,7 +2030,7 @@ def full_redundancy_header(
     )
 
     say(
-        f"בדיקת יתירות מלאה על {size} ה-clauses"
+        phrase("full_redundancy_header_1", size=size)
     )
 
     say(
@@ -2076,11 +2038,11 @@ def full_redundancy_header(
     )
 
     say(
-        "\nבמהלך החיפוש נבדקו רק ה-parents של כל צעד."
+        phrase("full_redundancy_header_2")
     )
 
     say(
-        "כאן בודקים כל clause מול כל השאר."
+        phrase("full_redundancy_header_3")
     )
 
 
@@ -2102,7 +2064,7 @@ def clause_is_redundant(
     )
 
     say(
-        "נבלעת על ידי:",
+        phrase("clause_is_redundant_1"),
         ltr(
             clause_str(
                 subsumer
@@ -2111,7 +2073,7 @@ def clause_is_redundant(
     )
 
     say(
-        "כל מה שהיא אומרת כבר נאמר, ולכן מוחקים אותה."
+        phrase("clause_is_redundant_2")
     )
 
 
@@ -2120,7 +2082,7 @@ def nothing_redundant():
     """The sweep found nothing to delete."""
 
     say(
-        "\nאף clause אינו מיותר -- כולם נשארים."
+        phrase("nothing_redundant")
     )
 
 
@@ -2132,7 +2094,7 @@ def reduced_kb(
 
     show_kb(
         kb,
-        "ה-KB לאחר בדיקת היתירות"
+        phrase("reduced_kb")
     )
 
 
@@ -2149,8 +2111,7 @@ def account_header(
     )
 
     say(
-        f"כל הצמדים האפשריים: {pairs} צמדים "
-        f"מתוך {size} clauses"
+        phrase("account_header_1", pairs=pairs, size=size)
     )
 
     say(
@@ -2158,7 +2119,7 @@ def account_header(
     )
 
     say(
-        "\nלכל צמד -- מה הוא היה נותן, ולמה זה לא מוסיף כלום."
+        phrase("account_header_2")
     )
 
 
@@ -2177,25 +2138,17 @@ def pair_yields_nothing(
     if complementary:
 
         say(
-            f"\nC{first} × C{second}: "
-            "יש ליטרלים משלימים, אבל הם לא ניתנים לאיחוד."
+            phrase("pair_yields_nothing_1", first=first, second=second)
         )
 
         return
 
     say(
-        f"\nC{first} × C{second}: "
-        "אין זוג ליטרלים משלימים."
+        phrase("pair_yields_nothing_2", first=first, second=second)
     )
 
 
-ACCOUNT_VERDICTS = {
-    "tautology": "ה-resolvent הוא טאוטולוגיה, ולכן חסר תועלת",
-    "in_kb": "ה-clause הזה כבר נמצא ב-KB",
-    "seen_earlier": "ה-clause הזה כבר נגזר קודם",
-    "implied": "ה-clause שממנו הוא נגזר כבר אומר את זה (subsumption)",
-    "new": "ה-clause הזה חדש -- כאן זה לא אמור לקרות",
-}
+
 
 
 def pair_resolvent(
@@ -2218,7 +2171,7 @@ def pair_resolvent(
 
     say(
         "    "
-        + ACCOUNT_VERDICTS[
+        + phrase_table("account_verdicts")[
             verdict
         ]
     )
@@ -2231,8 +2184,7 @@ def factor_yields_nothing(
     """No two literals of this clause can be merged."""
 
     say(
-        f"\nfactoring של C{index}: "
-        "אין שני ליטרלים מאותו סימן שניתן לאחד."
+        phrase("factor_yields_nothing", index=index)
     )
 
 
@@ -2245,7 +2197,7 @@ def factor_result(
     """A factor this clause still has, and why it changes nothing."""
 
     say(
-        f"\nfactoring של C{index}: "
+        phrase("factor_result", index=index)
         + ltr(
             clause_str(
                 factor
@@ -2255,7 +2207,7 @@ def factor_result(
 
     say(
         "    "
-        + ACCOUNT_VERDICTS[
+        + phrase_table("account_verdicts")[
             verdict
         ]
     )
@@ -2266,7 +2218,7 @@ def factoring_is_off():
     """Factoring was not part of this search, so it is not part of the account."""
 
     say(
-        "\nה-factoring כבוי (USE_FACTORING), ולכן לא נבדק כאן."
+        phrase("factoring_is_off")
     )
 
 
@@ -2275,7 +2227,7 @@ def equality_rule_is_off():
     """No equality rule ran, so the account does not pretend otherwise."""
 
     say(
-        "\nאין כלל היסק לשוויון (EQUALITY_RULE), ולכן לא נבדק כאן."
+        phrase("equality_rule_is_off")
     )
 
 
@@ -2299,7 +2251,7 @@ def paramodulant_result(
 
     say(
         "    "
-        + ACCOUNT_VERDICTS[
+        + phrase_table("account_verdicts")[
             verdict
         ]
     )
@@ -2310,7 +2262,7 @@ def no_paramodulants():
     """The equality rule ran but has nothing left to rewrite."""
 
     say(
-        "\nאין שוויון שאפשר להציב באף clause."
+        phrase("no_paramodulants")
     )
 
 
@@ -2334,8 +2286,7 @@ def account_conclusion(
     if new_clauses:
 
         say(
-            f"נמצאו {new_clauses} clauses חדשים -- "
-            "החיפוש היה אמור להמשיך."
+            phrase("account_conclusion_1", new_clauses=new_clauses)
         )
 
         say(
@@ -2345,13 +2296,13 @@ def account_conclusion(
         return
 
     say(
-        "אף אפשרות לא נותנת clause חדש,"
+        phrase("account_conclusion_2")
     )
 
     if focused:
 
         say(
-            "ולכן ה-KB הממוקד רווי: אין דרך להגיע ל-□."
+            phrase("account_conclusion_3")
         )
 
         say(
@@ -2359,25 +2310,25 @@ def account_conclusion(
         )
 
         say(
-            "\nשימו לב: זה נכון ל-KB הממוקד בלבד."
+            phrase("account_conclusion_4")
         )
 
         say(
-            "ההצבה היתה ניחוש, וכל מה שהתברר הוא שהניחוש לא הספיק --"
+            phrase("account_conclusion_5")
         )
 
         say(
-            "על השאלה עצמה אי אפשר ללמוד מכאן דבר,"
+            phrase("account_conclusion_6")
         )
 
         say(
-            "ולכן ממשיכים ל-Resolution הכללי."
+            phrase("account_conclusion_7")
         )
 
         return
 
     say(
-        "ולכן ה-KB רווי: אין דרך להגיע ל-□."
+        phrase("account_conclusion_8")
     )
 
     say(
@@ -2385,11 +2336,11 @@ def account_conclusion(
     )
 
     say(
-        "\nשימו לב: זה אומר שהסולבר הזה לא מצא סתירה,"
+        phrase("account_conclusion_9")
     )
 
     say(
-        "לא שהמסקנה בהכרח אינה נובעת."
+        phrase("account_conclusion_10")
     )
 
 
@@ -2410,7 +2361,7 @@ def focus_header(
     )
 
     say(
-        f"שלב מיקוד ב-witness {witness}"
+        phrase("focus_header_1", witness=witness)
     )
 
     say(
@@ -2418,11 +2369,11 @@ def focus_header(
     )
 
     say(
-        f"\nנמצא witness קיומי בשם {witness}."
+        phrase("focus_header_2", witness=witness)
     )
 
     say(
-        "ננסה תחילה את ההצבה:"
+        phrase("focus_header_3")
     )
 
     say(
@@ -2447,7 +2398,7 @@ def focus_skipped_many_witnesses(
     )
 
     say(
-        "מדלגים על שלב המיקוד"
+        phrase("focus_skipped_many_witnesses_1")
     )
 
     say(
@@ -2455,7 +2406,7 @@ def focus_skipped_many_witnesses(
     )
 
     say(
-        "\nה-Skolemization יצרה יותר מ-witness אחד:"
+        phrase("focus_skipped_many_witnesses_2")
     )
 
     say(
@@ -2468,15 +2419,15 @@ def focus_skipped_many_witnesses(
     )
 
     say(
-        "\nמשתנה אוניברסלי יכול להתייחס לכל אחד מהם,"
+        phrase("focus_skipped_many_witnesses_3")
     )
 
     say(
-        "ולכן אין סיבה להעדיף דווקא את הראשון."
+        phrase("focus_skipped_many_witnesses_4")
     )
 
     say(
-        "ממשיכים ישר ל-Resolution הכללי."
+        phrase("focus_skipped_many_witnesses_5")
     )
 
 
@@ -2485,25 +2436,25 @@ def focus_keeps_axioms():
     """The relation axioms are staying general, and why."""
 
     say(
-        "\nהאקסיומות של היחסים נשארות כלליות, בלי ההצבה:"
+        phrase("focus_keeps_axioms_1")
     )
 
     say(
-        "אקסיומה כמו "
+        phrase("focus_keeps_axioms_2")
         + ltr("¬Eq(x,y) ∨ Eq(y,x)")
-        + " אומרת שהיחס סימטרי,"
+        + phrase("focus_keeps_axioms_3")
     )
 
     say(
-        "ואילו "
+        phrase("focus_keeps_axioms_4")
         + ltr("¬Eq(c,y) ∨ Eq(y,c)")
-        + " אומרת רק שהוא סימטרי ביחס ל-"
+        + phrase("focus_keeps_axioms_5")
         + ltr("c")
         + " --"
     )
 
     say(
-        "כלומר בדיוק מה שהוספנו אותה כדי שלא יקרה."
+        phrase("focus_keeps_axioms_6")
     )
 
 
@@ -2519,7 +2470,7 @@ def focus_clause_kept(
     )
 
     say(
-        "נשארת כללית:",
+        phrase("focus_clause_kept"),
         ltr(
             clause_str(
                 clause
@@ -2541,7 +2492,7 @@ def focus_clause(
     )
 
     say(
-        "לפני:",
+        phrase("focus_clause_1"),
         ltr(
             clause_str(
                 before
@@ -2550,7 +2501,7 @@ def focus_clause(
     )
 
     say(
-        "אחרי:",
+        phrase("focus_clause_2"),
         ltr(
             clause_str(
                 after
@@ -2568,5 +2519,5 @@ def focused_kb(
 
     show_kb(
         kb,
-        f"KB לאחר המיקוד ב-{witness}"
+        phrase("focused_kb", witness=witness)
     )

@@ -221,10 +221,22 @@ answer.
 
 ### Things that will bite you
 
-**All Hebrew lives in `narration.py`**, and everything printed goes through `say()`
+**Words and layout are separate** (`phrases/`, `narration.py`). `narration.py` decides what a
+reader sees — the banners, the indentation, which bindings are worth printing — and holds no words
+at all; `phrases/hebrew.py` holds every sentence, keyed by the event that says it, reached through
+`phrase(key, **values)` and `phrase_table(name)`. Adding a language is a second catalogue, not a
+second narrator, and `phrases/lookup.py` checks at import that the catalogues offer exactly the same
+keys, so a language cannot quietly fall behind. `config.LANGUAGE` chooses; an unrecognised value
+raises and names the ones that exist.
+
+**All Hebrew lives in `phrases/hebrew.py`**, and everything printed goes through `say()`
 (`output.py`), never bare `print`. A Hebrew string anywhere else in `skolemization/` is a bug —
-`grep -rlP '[\x{0590}-\x{05FF}]' skolemization/` should name only `narration.py` (and
+`grep -rlP '[\x{0590}-\x{05FF}]' skolemization/` should name only `phrases/hebrew.py` (and
 `output.py`, whose docstring illustrates the RTL rule).
+
+**Logic never goes in an `__init__.py`.** `build_notebook.py` treats those files as re-exports and
+skips their bodies, so a function defined in one exists in the package and vanishes from the
+notebook — which is exactly how `phrases/lookup.py` came to be a module of its own.
 
 Direction is handled at two levels, and both are needed:
 
@@ -238,6 +250,14 @@ Direction is handled at two levels, and both are needed:
    mirrored characters, so they flip glyphs as well. An LTR isolate covers the whole
    expression, symbols and brackets included. A lone symbol ending a Hebrew sentence
    (`הורדת כמתי ∀`) is the exception — it should inherit RTL, so leave it unmarked.
+
+**The direction follows the language, and is not a separate setting.** Each catalogue declares its
+`DIRECTION`, and `config.RTL_OUTPUT` is `"auto"` by default: Hebrew gets the marks, English would
+only be littered with invisible characters. `True`/`False` force it. There is no language-to-
+direction table in the standard library (CLDR has one, but that means ICU and this package has no
+dependencies), which is why the language states its own; `output.line_is_rtl` asks
+`unicodedata.bidirectional` for the strong classes `R`/`AL` rather than matching a Hebrew block, so
+Arabic, Syriac, Thaana, N'Ko and Adlam are laid out rather than scrambled.
 
 `config.RTL_OUTPUT = False` makes both a no-op and `say` a byte-for-byte `print`;
 `config.NARRATE = False` silences it entirely, so `prove` can be used as a library call. That
