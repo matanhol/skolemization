@@ -32,7 +32,9 @@ Stdlib only. No package metadata, tests, or lint config. `.idea/` is PyCharm.
 verify → *one* commit, whose subject names the change and whose body says why it was made and what
 was measured. Documentation moves inside that same commit, never after it — which is what the
 section above is asking for, now with something to enforce it. Nothing is committed before
-approval, and there is no remote: nothing leaves the machine.
+approval. There is one remote, `origin`, pointing at the public repository
+`github.com/matanhol/skolemization`; pushing stays a deliberate act, not something that follows a
+commit automatically.
 
 `skolemization_example.py` at the root is the **frozen original** — the single-file Colab export
 the package was split out of. It still runs, but it is a reference copy: all changes go to
