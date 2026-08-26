@@ -1999,20 +1999,20 @@ def unit_sweep_nothing():
 # WHY A SATURATED SEARCH IS FINISHED
 # ================================================================
 
-def counterexample(
-    entered,
-    reduced,
-    shape,
-    needed
+def countermodel(
+    universes,
+    statements,
+    checks,
+    holds
 ):
 
-    """Working backwards from a saturated KB to what a counter-model must be.
+    """The model a saturated KB was hiding, described rather than enumerated.
 
-    Pure epilogue: the answer is already fixed, and this only reads the
-    negated conclusion's own clauses back out of it.  The reader gets the three
-    stages -- as they entered, what the units left of them, and the formula
-    they amount to -- and then the negation, which is what the conclusion would
-    have needed to hold.
+    Universals stay universal: a clause about every element says so, instead of
+    being unrolled over a domain that was never part of the question.  Only the
+    ground terms are named, each in its own universe, so a Skolem term written
+    into another argument place is visibly a different kind of thing from the
+    constant it was built from.
     """
 
     say(
@@ -2021,7 +2021,7 @@ def counterexample(
     )
 
     say(
-        phrase("counterexample_header")
+        phrase("countermodel_header")
     )
 
     say(
@@ -2029,87 +2029,263 @@ def counterexample(
     )
 
     say(
-        phrase("counterexample_intro_1")
+        phrase("countermodel_intro_1")
     )
 
     say(
-        phrase("counterexample_intro_2")
+        phrase("countermodel_intro_2")
     )
 
     say(
-        phrase("counterexample_intro_3")
+        phrase("countermodel_intro_3")
     )
 
     say(
-        phrase("counterexample_entered")
+        phrase("countermodel_universes")
     )
 
-    for clause in entered:
+    for letter, positions, witnesses in universes:
 
         say(
             "    "
-            + ltr(
-                clause_str(clause)
+            + phrase(
+                "countermodel_universe",
+                letter=ltr(letter),
+                positions=ltr(
+                    ", ".join(positions)
+                )
             )
         )
 
-    if not reduced:
+        if not witnesses:
+
+            say(
+                "        "
+                + phrase("countermodel_no_witnesses")
+            )
+
+            continue
 
         say(
-            phrase("counterexample_nothing")
+            "        "
+            + phrase(
+                "countermodel_witnesses",
+                witnesses=ltr(
+                    ", ".join(
+                        f"{name} = {term}"
+                        for name, term
+                        in witnesses
+                    )
+                )
+            )
+        )
+
+    say(
+        phrase("countermodel_facts")
+    )
+
+    for statement in statements:
+
+        _say_statement(
+            statement
+        )
+
+    say(
+        phrase("countermodel_size")
+    )
+
+    say(
+        phrase("countermodel_check")
+    )
+
+    for formula, verdict, is_conclusion, reason in checks:
+
+        if is_conclusion:
+
+            label = (
+                "countermodel_conclusion_true"
+                if verdict
+                else "countermodel_conclusion_false"
+            )
+
+        else:
+
+            label = (
+                "countermodel_assumption_true"
+                if verdict
+                else "countermodel_assumption_false"
+            )
+
+        say(
+            phrase(label)
+        )
+
+        say_block(
+            "        ",
+            formula_str(formula),
+            indent="        "
+        )
+
+        _say_reason(
+            reason
+        )
+
+    if holds:
+
+        say(
+            phrase("countermodel_verdict")
+        )
+
+
+def _say_statement(
+    statement
+):
+
+    """One clause of the model, with its quantifiers left alone."""
+
+    indent = (
+        "        "
+        if statement["variables"]
+        else "    "
+    )
+
+    if statement["variables"]:
+
+        say(
+            "    "
+            + phrase(
+                "countermodel_for_every",
+                variables=ltr(
+                    ", ".join(
+                        f"{variable} ∈ {universe}"
+                        for variable, universe
+                        in statement["variables"]
+                    )
+                )
+            )
+        )
+
+    conditions = statement[
+        "conditions"
+    ]
+
+    consequences = statement[
+        "consequences"
+    ]
+
+    if conditions and consequences:
+
+        say(
+            indent
+            + phrase(
+                "countermodel_if_then",
+                conditions=ltr(
+                    " ∧ ".join(conditions)
+                ),
+                consequences=ltr(
+                    " ∨ ".join(consequences)
+                )
+            )
+        )
+
+        return
+
+    if conditions:
+
+        say(
+            indent
+            + phrase(
+                "countermodel_never",
+                conditions=ltr(
+                    " ∧ ".join(conditions)
+                )
+            )
         )
 
         return
 
     say(
-        phrase("counterexample_reduced")
+        indent
+        + phrase(
+            "countermodel_always",
+            consequences=ltr(
+                " ∨ ".join(consequences)
+            )
+        )
     )
 
-    for clause in reduced:
+
+def _say_reason(
+    reason
+):
+
+    """One line under a formula: what makes it come out that way here.
+
+    A reason that names a subformula prints it after the sentence, so the
+    reader sees which condition was never met rather than being told that one
+    was not.
+    """
+
+    key, values = reason
+
+    if "element" in values:
 
         say(
-            "    "
-            + ltr(
-                clause_str(clause)
+            "            "
+            + phrase(
+                f"reason_{key}",
+                element=ltr(
+                    values["element"]
+                )
             )
         )
 
-    say(
-        phrase("counterexample_shape")
-    )
-
-    say_block(
-        "    ",
-        formula_str(shape),
-        indent="    "
-    )
+        return
 
     say(
-        phrase("counterexample_together")
+        "            "
+        + phrase(f"reason_{key}")
     )
 
-    say(
-        phrase("counterexample_needed")
-    )
+    for name in ("condition", "consequent"):
 
-    say_block(
-        "    ",
-        formula_str(needed),
-        indent="    "
-    )
+        if name not in values:
+            continue
+
+        say_block(
+            "                ",
+            formula_str(
+                values[name]
+            ),
+            indent="                "
+        )
 
 
-def counterexample_refused(
-    focused
+def countermodel_not_found(
+    largest
 ):
 
-    """Why no counter-model was read off, when the flag asked for one."""
+    """The search for a finite model came up empty, which is not a verdict."""
 
     say(
         phrase(
-            "counterexample_refused_focused"
+            "countermodel_not_found",
+            largest=largest
+        )
+    )
+
+
+def countermodel_refused(
+    focused
+):
+
+    """Why no counter-model was built, when the flag asked for one."""
+
+    say(
+        phrase(
+            "countermodel_refused_focused"
             if focused
-            else "counterexample_refused_support"
+            else "countermodel_refused_support"
         )
     )
 

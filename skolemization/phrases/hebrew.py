@@ -632,52 +632,120 @@ factoring של C{index}: """,
     "focused_kb":
     "KB לאחר המיקוד ב-{witness}",
 
-    "counterexample_header":
-    "מה צריך להיות נכון במודל נגדי",
+    "countermodel_header":
+    "מודל נגדי",
 
-    "counterexample_intro_1":
+    "countermodel_intro_1":
     """
-חיפוש שרווי הוא לא רק "לא נמצאה סתירה": קבוצת clauses רוויה""",
+החיפוש רווה בלי סתירה, ולכן קבוצת ה-clauses ספיקה -- ויש בה מודל.""",
 
-    "counterexample_intro_2":
-    "בלי □ היא ספיקה, ויש בה מודל. ה-clauses שהגיעו משלילת",
+    "countermodel_intro_2":
+    "הנה מודל שמקיים את כל ה-clauses שנשארו, ולכן גם את ההנחות",
 
-    "counterexample_intro_3":
-    "המסקנה הם אלה שאומרים איך המודל הזה חייב להיראות.",
+    "countermodel_intro_3":
+    "ואת שלילת המסקנה. זהו מודל נגדי לטענה.",
 
-    "counterexample_entered":
+    "countermodel_check":
     """
-ה-clauses של שלילת המסקנה, כפי שנכנסו:""",
+בדיקה של המודל מול השאלה המקורית:""",
 
-    "counterexample_reduced":
+    "countermodel_assumption_true":
+    "    ההנחה מתקיימת:",
+
+    "countermodel_assumption_false":
+    "    ⚠️ ההנחה אינה מתקיימת -- וזה לא אמור לקרות:",
+
+    "countermodel_conclusion_false":
+    "    המסקנה אינה מתקיימת:",
+
+    "countermodel_conclusion_true":
+    "    ⚠️ המסקנה מתקיימת -- וזה לא אמור לקרות:",
+
+    "countermodel_verdict":
     """
-אחרי צמצום לפי ה-clauses בני ליטרל אחד שהחיפוש מצא:""",
+ההנחות מתקיימות והמסקנה לא, ולכן המסקנה אינה נובעת מהן.""",
 
-    "counterexample_shape":
+    "countermodel_not_found":
     """
-והם, כשקוראים אותם אחורה כנוסחה (בלי לבטל את ה-Skolemization,
-כדי שה-witnesses יישארו):""",
+לא נמצא מודל סופי עד גודל {largest}. ייתכן שכל מודל של ה-clauses
+האלה אינסופי, וייתכן שצריך תחום גדול יותר.""",
 
-    "counterexample_together":
-    """
-כל מודל נגדי חייב לקיים את זה, יחד עם ההנחות.""",
-
-    "counterexample_needed":
-    """
-ושלילתה היא מה שהמסקנה היתה צריכה כדי להתקיים:""",
-
-    "counterexample_nothing":
-    """
-לא נשאר דבר משלילת המסקנה -- היא נצרכה כולה.""",
-
-    "counterexample_refused_focused":
+    "countermodel_refused_focused":
     """
 לא נבנה מודל נגדי: זה ה-KB הממוקד, וההצבה בו היא ניחוש.""",
 
-    "counterexample_refused_support":
+    "countermodel_refused_support":
     """
-לא נבנה מודל נגדי: החיפוש רץ עם set of support, ולכן הריקנות
-שלו אינה מעידה על ספיקות.""",
+לא נבנה מודל נגדי: החיפוש רץ עם set of support, ולכן הריקנות שלו
+אינה מעידה על ספיקות.""",
+
+    "reason_vacuous_universal":
+    "ריקנית: אין במודל איבר שמקיים את",
+
+    "reason_universal_holds":
+    "מתקיים עבור כל איברי התחום.",
+
+    "reason_universal_fails":
+    "לא מתקיים עבור {element}.",
+
+    "reason_witnessed":
+    "העד הוא {element}.",
+
+    "reason_no_witness":
+    "אין במודל איבר שמקיים את זה.",
+
+    "reason_vacuous_implication":
+    "ריקנית: הצד השמאלי אינו מתקיים במודל --",
+
+    "reason_implication_holds":
+    "הצד הימני מתקיים במודל --",
+
+    "reason_implication_fails":
+    "הצד השמאלי מתקיים אבל הימני לא --",
+
+    "reason_plainly":
+    "כך זה יוצא במודל.",
+
+    "countermodel_gave_up_separate_witnesses":
+    """
+ה-clauses מכריחים שני witnesses להיות אותו איבר -- אין ברירה.""",
+
+    "countermodel_gave_up_no_self_application":
+    """
+ה-clauses מכריחים פונקציה לשלוח איבר לעצמו -- אין ברירה.""",
+
+    "countermodel_universes":
+    """
+העולמות -- לכל מקום בארגומנטים יש סוג, והם הופרדו לפי מה שמופיע בהם:""",
+
+    "countermodel_universe":
+    "עולם {letter}:  {positions}",
+
+    "countermodel_witnesses":
+    "עדים: {witnesses}",
+
+    "countermodel_no_witnesses":
+    "אין צורך בעד.",
+
+    "countermodel_facts":
+    """
+מה שמתקיים במודל -- וכל השאר חופשי:""",
+
+    "countermodel_for_every":
+    "לכל {variables}:",
+
+    "countermodel_if_then":
+    "אם {conditions} אז {consequences}",
+
+    "countermodel_never":
+    "לא מתקיים {conditions}",
+
+    "countermodel_always":
+    "מתקיים {consequences}",
+
+    "countermodel_size":
+    """
+גודל העולמות אינו קבוע: כל גודל שמכיל את העדים מתאים.""",
 
 }
 

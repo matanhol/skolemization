@@ -10,6 +10,15 @@ from .focus import (
     kb_contains_witness,
 )
 from .preprocessing import preprocess
+from .counterexample import (
+    LARGEST_DOMAIN,
+    Naming,
+    describe,
+    finite_model,
+    sorts_of,
+    why,
+    witness_elements,
+)
 from .search import run_resolution_search
 
 
@@ -90,11 +99,154 @@ def prove(
         supported=prepared.conclusion_clauses
     )
 
+    if (
+        status == "SATURATED_NO_CONTRADICTION"
+        and
+        config.EXPLAIN_COUNTEREXAMPLE
+    ):
+
+        _build_countermodel(
+            final_kb,
+            prepared
+        )
+
     narration.final_status(
         status
     )
 
     return status
+
+
+def _build_countermodel(
+    final_kb,
+    prepared
+):
+
+    """Read the model out of a saturated KB, and check it against the question.
+
+    A model of the surviving clauses is a model of the original ones -- the
+    only thing ever deleted is a clause its survivors imply -- so it satisfies
+    the assumptions and the negated conclusion, which is exactly what a
+    counter-example is.  That is guaranteed in theory and *checked* here, by
+    evaluating the parsed question in the structure: a wrong verdict would mean
+    the model, the saturation or the evaluator is broken, and it is printed
+    rather than smoothed over.
+
+    A set of support refuses: that search never tried the inferences among the
+    assumptions, so its running dry says nothing about satisfiability.
+    """
+
+    if config.SET_OF_SUPPORT:
+
+        narration.countermodel_refused(
+            False
+        )
+
+        return
+
+    model, given_up = finite_model(
+        final_kb
+    )
+
+    if model is None:
+
+        narration.countermodel_not_found(
+            LARGEST_DOMAIN
+        )
+
+        return
+
+    # The finite model is never printed.  It is the proof that what follows is
+    # satisfiable rather than merely plausible; what the reader gets is the
+    # description, with the universals left standing.
+    sorts = sorts_of(
+        prepared.clauses
+    )
+
+    naming = Naming(
+        sorts,
+        final_kb
+    )
+
+    elements = witness_elements(
+        model,
+        naming,
+        final_kb
+    )
+
+    checks = []
+
+    for formula in prepared.assumption_formulas:
+
+        checks.append(
+            _checked(
+                formula,
+                model,
+                elements,
+                False
+            )
+        )
+
+    checks.append(
+        _checked(
+            prepared.conclusion_formula,
+            model,
+            elements,
+            True
+        )
+    )
+
+    narration.countermodel(
+        naming.universes(),
+        describe(
+            final_kb,
+            naming
+        ),
+        checks,
+        all(
+            verdict != is_conclusion
+            for _, verdict, is_conclusion, _
+            in checks
+        )
+    )
+
+
+def _checked(
+    formula,
+    model,
+    elements,
+    is_conclusion
+):
+
+    """One formula, its verdict, and why -- with elements named as witnesses.
+
+    An explanation that points at an element points at it by the name the
+    reader was given (``a1``), or says "some element" when the element is not
+    one the clauses ever named.
+    """
+
+    verdict, (key, values) = why(
+        formula,
+        model
+    )
+
+    if "element" in values:
+
+        values = dict(
+            values
+        )
+
+        values["element"] = elements.get(
+            values["element"],
+            "?"
+        )
+
+    return (
+        formula,
+        verdict,
+        is_conclusion,
+        (key, values)
+    )
 
 
 def _add_reflexivity(
@@ -148,7 +300,6 @@ def _add_reflexivity(
         ]
     )
 
-
 def _mentions_equality(
     text
 ):
@@ -171,7 +322,6 @@ def _mentions_equality(
             text
         )
     )
-
 
 def _axiom_positions(
     extended_assumptions,

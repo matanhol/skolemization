@@ -1,337 +1,117 @@
-"""Reading the shape of a counter-model out of a saturated knowledge base.
+"""Building the counter-model that a saturated knowledge base is hiding.
 
 A refutation is not the only thing a resolution search can produce.  When it
-runs dry the other half of the completeness theorem applies: a clause set
-saturated under a complete calculus with no □ in it *is* satisfiable, and the
-usual proof is constructive.  So ``SATURATED_NO_CONTRADICTION`` is not "I gave
-up" -- there is a model in there, and the clauses that came from the **negated
-conclusion** say what it has to look like.
+runs dry, the other half of the completeness theorem applies: a clause set
+saturated under a complete calculus with no □ in it *is* satisfiable.  And the
+KB it saturated to is not an obstacle to reading that model off -- it is the
+description of it::
 
-This module walks the pipeline backwards.  Take those clauses, let the units
-the search found simplify them, and then undo the steps::
+    ¬Q(x, y)     P(c)     ¬P(c4)
 
-    7  the clauses become a conjunction of disjunctions
-    6  skipped -- undoing distribution is not unique, and CNF reads fine
-    5  the free variables are closed universally
-    4  SKIPPED ON PURPOSE -- the Skolem witnesses stay
-    3  skipped -- negation normal form reads fine
-    2  ¬A ∨ B folds back into A → B, where that reads better
-    1  negating the whole thing says what the conclusion would have needed
+says: Q holds of nothing, P holds of c and not of c4.  Two elements, because
+one clause wants something with P and another wants something without.
 
-Step 4 is the one that must not be undone.  Un-Skolemizing would turn ``c4``
-back into a quantifier and hand back something close to the conclusion; keeping
-it makes the result a statement about a named witness, which is what a
-counter-model is::
+So this module builds a **finite structure** -- a domain, a table per
+predicate, and tables for the constants and Skolem functions -- that satisfies
+every surviving clause, and then evaluates the original assumptions and
+conclusion in it.  The assumptions must come out true and the conclusion false;
+that is what makes it a counter-example rather than a picture of one, and it is
+checked rather than asserted.
 
-    ¬P(c4) ∧ ∀x ∀y ¬Q(x, y)          "c4 is not P, and Q is empty"
+Why it must be *this* KB and not just the negated conclusion's clauses: the
+conclusion's half alone says what the model must avoid, not what it must
+contain.  Drop ``P(c)`` from the example above and nothing explains why one
+element will not do.
 
-Nothing here decides anything: it is an account, printed after the answer is
-already fixed, under ``config.EXPLAIN_COUNTEREXAMPLE``.
+The search is deliberately small: domain sizes 1, 2, 3 ... up to a cap, all
+interpretations of the constants and functions, and a plain DPLL over the
+ground instances of the clauses.  Teaching scale, not competition scale -- and
+when nothing is found it says so rather than implying there is no model.
 """
+
+from itertools import product
 
 from .formulas import (
     And,
+    Atom,
     Exists,
     ForAll,
     Implies,
     Not,
     Or,
 )
-from .steps.nnf import to_nnf
-from .subsumption import (
-    clause_subsumes,
-    match_literal,
-)
 
 
-def simplify_against_units(
-    clauses,
-    kb
-):
+# How far the search goes before giving up.  Three elements is enough for every
+# saturating example in this package, and the work grows fast: every function
+# symbol multiplies the interpretations to try by size ** (size ** arity).
 
-    """The conclusion's clauses, reduced by the one-literal clauses of ``kb``.
+LARGEST_DOMAIN = 3
 
-    A unit may be **instantiated** to cancel a literal; the clause may not.
-    That asymmetry is the whole rule and it is what makes this sound: a unit is
-    universally quantified, so using ``¬Q(x, y)`` as ``¬Q(c4, c5)`` is
-    universal instantiation and free, while binding a variable of the *clause*
-    would replace it with something stronger than what the search proved.
 
-    ``subsumption.resolve_with_unit`` refuses both, because the sweep it serves
-    is rewriting the KB in place and must not narrow a clause it keeps.  Here
-    the clauses are being read, not kept, so the weaker guard is the right one.
+def signature(kb):
+
+    """The predicates, constants and functions the clauses actually mention.
+
+    Returns ``(predicates, constants, functions)``, each a dict from name to
+    arity -- the shape any model of these clauses has to have.
     """
 
-    units = [
-        clause[0]
-        for clause
-        in kb
-        if len(clause) == 1
-    ]
+    predicates = {}
 
-    reduced = []
+    constants = {}
 
-    for clause in clauses:
+    functions = {}
 
-        remaining = list(
-            clause
-        )
+    def walk_term(term):
 
-        changed = True
+        if term.is_var:
+            return
 
-        while changed:
+        if term.args:
 
-            changed = False
-
-            for unit in units:
-
-                for literal in list(
-                    remaining
-                ):
-
-                    if not _unit_cancels(
-                        unit,
-                        literal
-                    ):
-
-                        continue
-
-                    remaining.remove(
-                        literal
-                    )
-
-                    changed = True
-
-        if remaining:
-
-            reduced.append(
-                remaining
+            functions[term.name] = len(
+                term.args
             )
 
-    return _drop_subsumed(
-        reduced
-    )
+        else:
 
+            constants[term.name] = 0
 
-def _unit_cancels(
-    unit,
-    literal
-):
+        for argument in term.args:
 
-    """Does this unit, instantiated, cancel this literal?
-
-    Opposite signs, and the unit's atom matches the literal's one way round --
-    the unit's variables may be bound, the literal's may not.
-    """
-
-    if unit.negated == literal.negated:
-        return False
-
-    flipped = type(unit)(
-        unit.atom,
-        literal.negated
-    )
-
-    return match_literal(
-        flipped,
-        literal,
-        {}
-    ) is not None
-
-
-def _drop_subsumed(
-    clauses
-):
-
-    """Keep only the strongest of the clauses that survived."""
-
-    survivors = []
-
-    for clause in clauses:
-
-        if any(
-            clause_subsumes(
-                other,
-                clause
+            walk_term(
+                argument
             )
-            for other
-            in survivors
-        ):
 
-            continue
+    for clause in kb:
 
-        survivors = [
-            other
-            for other
-            in survivors
-            if not clause_subsumes(
-                clause,
-                other
+        for literal in clause:
+
+            predicates[literal.atom.pred] = len(
+                literal.atom.args
             )
-        ]
 
-        survivors.append(
-            clause
-        )
+            for argument in literal.atom.args:
 
-    return survivors
-
-
-def as_formula(
-    clauses
-):
-
-    """The clauses read back as one formula -- steps 7, 5 and 2 in reverse.
-
-    The universal closure is what step 5 dropped; the implication is what step
-    2 removed.  Step 4 is deliberately not undone, so every Skolem constant
-    stays exactly where it is.
-    """
-
-    if not clauses:
-        return None
-
-    # Each conjunct is closed over its *own* variables, not the conjunction
-    # over all of them: ¬P(c4) has no business sitting under a ∀x ∀y it never
-    # mentions, and the reading is the point here.
-    conjuncts = [
-        _close_universally(
-            _clause_as_formula(
-                clause
-            )
-        )
-        for clause
-        in clauses
-    ]
-
-    formula = conjuncts[0]
-
-    for conjunct in conjuncts[1:]:
-
-        formula = And(
-            formula,
-            conjunct
-        )
-
-    return formula
-
-
-def _clause_as_formula(
-    clause
-):
-
-    """One clause: ``A ∧ B → C`` when it has both signs, a disjunction otherwise."""
-
-    negative = [
-        literal
-        for literal
-        in clause
-        if literal.negated
-    ]
-
-    positive = [
-        literal
-        for literal
-        in clause
-        if not literal.negated
-    ]
-
-    if not negative or not positive:
-
-        return _join(
-            [
-                _literal_as_formula(
-                    literal
+                walk_term(
+                    argument
                 )
-                for literal
-                in clause
-            ],
-            Or
-        )
 
-    return Implies(
-        _join(
-            [
-                literal.atom
-                for literal
-                in negative
-            ],
-            And
-        ),
-        _join(
-            [
-                literal.atom
-                for literal
-                in positive
-            ],
-            Or
-        )
+    return (
+        predicates,
+        constants,
+        functions
     )
 
 
-def _literal_as_formula(
-    literal
-):
+def variables_of(clause):
 
-    """``P(x)`` or ``¬P(x)``, as a formula node."""
-
-    if literal.negated:
-
-        return Not(
-            literal.atom
-        )
-
-    return literal.atom
-
-
-def _join(
-    parts,
-    connective
-):
-
-    """Fold a list into one formula with ``connective``, left to right."""
-
-    formula = parts[0]
-
-    for part in parts[1:]:
-
-        formula = connective(
-            formula,
-            part
-        )
-
-    return formula
-
-
-def _close_universally(
-    formula
-):
-
-    """Put back the ∀ that step 5 removed, one per free variable."""
-
-    for variable in reversed(
-        _free_variables(
-            formula
-        )
-    ):
-
-        formula = ForAll(
-            variable,
-            formula
-        )
-
-    return formula
-
-
-def _free_variables(
-    formula
-):
-
-    """Every variable the formula mentions, in the order it first appears."""
+    """Every variable in a clause, in the order it first appears."""
 
     found = []
 
-    def walk_term(term):
+    def walk(term):
 
         if term.is_var:
 
@@ -345,73 +125,1534 @@ def _free_variables(
 
         for argument in term.args:
 
-            walk_term(
+            walk(
                 argument
             )
 
-    def walk(node):
+    for literal in clause:
 
-        if isinstance(
-            node,
-            (ForAll, Exists)
-        ):
+        for argument in literal.atom.args:
 
             walk(
-                node.body
-            )
-
-            return
-
-        if isinstance(node, Not):
-
-            walk(
-                node.x
-            )
-
-            return
-
-        if isinstance(
-            node,
-            (And, Or, Implies)
-        ):
-
-            walk(
-                node.a
-            )
-
-            walk(
-                node.b
-            )
-
-            return
-
-        for argument in node.args:
-
-            walk_term(
                 argument
             )
-
-    walk(
-        formula
-    )
 
     return found
 
 
-def what_the_conclusion_needed(
+class Model:
+
+    """A finite structure: a domain, and a table for every symbol.
+
+    ``constants`` and ``functions`` map a name to an element or to a tuple of
+    elements indexed by the arguments; ``predicates`` maps a name to the set of
+    tuples it holds of.  Everything is an integer in ``range(size)``, and the
+    narration is what turns those into something a reader wants to look at.
+    """
+
+    def __init__(
+        self,
+        size,
+        constants,
+        functions,
+        predicates
+    ):
+
+        self.size = size
+
+        self.constants = constants
+
+        self.functions = functions
+
+        self.predicates = predicates
+
+    def domain(self):
+
+        """The elements, as a range."""
+
+        return range(
+            self.size
+        )
+
+    def value_of(
+        self,
+        term,
+        binding
+    ):
+
+        """What a term denotes, under an assignment to its variables."""
+
+        if term.is_var:
+
+            return binding[
+                term.name
+            ]
+
+        if not term.args:
+
+            return self.constants[
+                term.name
+            ]
+
+        return self.functions[
+            term.name
+        ][
+            tuple(
+                self.value_of(
+                    argument,
+                    binding
+                )
+                for argument
+                in term.args
+            )
+        ]
+
+    def holds(
+        self,
+        atom,
+        binding
+    ):
+
+        """Is this atom true here, under that assignment?"""
+
+        return tuple(
+            self.value_of(
+                argument,
+                binding
+            )
+            for argument
+            in atom.args
+        ) in self.predicates[
+            atom.pred
+        ]
+
+
+# What the search asks of a model before it settles for one.  Smallest is not
+# clearest: a one-element universe where g1(e1) = e1 says "the owner of x is x",
+# which reads like a trick rather than a counter-example.  So the preferences
+# are tried in this order and given up one at a time, and whichever had to go is
+# reported -- that a clause *forces* two witnesses together is itself something
+# the reader should know.
+
+SEPARATE_WITNESSES = "separate_witnesses"
+
+NO_SELF_APPLICATION = "no_self_application"
+
+PREFERENCES = (
+    (SEPARATE_WITNESSES, NO_SELF_APPLICATION),
+    (SEPARATE_WITNESSES,),
+    (NO_SELF_APPLICATION,),
+    (),
+)
+
+
+def finite_model(
+    kb,
+    largest=LARGEST_DOMAIN
+):
+
+    """A model of these clauses that reads naturally, or None.
+
+    Returns ``(model, given_up)`` -- the structure, and which preferences the
+    clauses would not allow.  The search starts at as many elements as there
+    are constants rather than at one, because witnesses the problem named
+    separately should stay separate unless something forces them together.
+    """
+
+    predicates, constants, functions = signature(
+        kb
+    )
+
+    smallest = max(
+        1,
+        len(constants)
+    )
+
+    for wanted in PREFERENCES:
+
+        for size in range(
+            smallest,
+            largest + 1
+        ):
+
+            model = _model_of_size(
+                kb,
+                size,
+                predicates,
+                constants,
+                functions,
+                wanted
+            )
+
+            if model is not None:
+
+                return (
+                    model,
+                    [
+                        preference
+                        for preference
+                        in PREFERENCES[0]
+                        if preference not in wanted
+                    ]
+                )
+
+        # Nothing at any size under these preferences: drop one and try again,
+        # rather than reporting that no model exists when only a tidy one does
+        # not.
+
+    return (None, [])
+
+
+def _model_of_size(
+    kb,
+    size,
+    predicates,
+    constants,
+    functions,
+    wanted
+):
+
+    """Try every interpretation of the constants and functions at this size.
+
+    ``wanted`` filters those interpretations: distinct constants on distinct
+    elements, and no function sending an element to itself.  The predicates are
+    not enumerated -- once the terms are fixed each clause becomes a
+    propositional clause over ground atoms, and DPLL settles those far faster
+    than brute force would.
+    """
+
+    elements = list(
+        range(size)
+    )
+
+    for constant_values in product(
+        elements,
+        repeat=len(constants)
+    ):
+
+        if (
+            SEPARATE_WITNESSES in wanted
+            and
+            len(set(constant_values)) != len(constant_values)
+        ):
+
+            continue
+
+        constant_table = dict(
+            zip(
+                constants,
+                constant_values
+            )
+        )
+
+        for function_table in _function_tables(
+            functions,
+            elements
+        ):
+
+            if (
+                NO_SELF_APPLICATION in wanted
+                and
+                _sends_something_to_itself(
+                    function_table
+                )
+            ):
+
+                continue
+
+            candidate = Model(
+                size,
+                constant_table,
+                function_table,
+                {}
+            )
+
+            assignment = _solve(
+                _ground_clauses(
+                    kb,
+                    candidate,
+                    elements
+                )
+            )
+
+            if assignment is None:
+                continue
+
+            candidate.predicates = _predicate_tables(
+                predicates,
+                assignment
+            )
+
+            return candidate
+
+    return None
+
+
+def _sends_something_to_itself(
+    function_table
+):
+
+    """Does any function map an element to itself?
+
+    ``g1(e1) = e1`` reads as "the owner of x is x", which is the kind of model a
+    reader stops believing.  Where the clauses allow it, one more element buys a
+    structure that says what it means.
+    """
+
+    for table in function_table.values():
+
+        for arguments, value in table.items():
+
+            if value in arguments:
+                return True
+
+    return False
+
+
+def _function_tables(
+    functions,
+    elements
+):
+
+    """Every way of interpreting the function symbols over the domain."""
+
+    names = sorted(
+        functions
+    )
+
+    argument_tuples = [
+        list(
+            product(
+                elements,
+                repeat=functions[name]
+            )
+        )
+        for name
+        in names
+    ]
+
+    choices = [
+        product(
+            elements,
+            repeat=len(arguments)
+        )
+        for arguments
+        in argument_tuples
+    ]
+
+    for values in product(*choices):
+
+        yield {
+            name: dict(
+                zip(
+                    arguments,
+                    row
+                )
+            )
+            for name, arguments, row
+            in zip(names, argument_tuples, values)
+        }
+
+
+def _ground_clauses(
+    kb,
+    model,
+    elements
+):
+
+    """Every clause, over every assignment of its variables to the domain.
+
+    A literal becomes ``(predicate, argument tuple, sign)`` -- a propositional
+    atom, since the terms are already resolved by the model's constant and
+    function tables.
+    """
+
+    grounded = []
+
+    for clause in kb:
+
+        variables = variables_of(
+            clause
+        )
+
+        for values in product(
+            elements,
+            repeat=len(variables)
+        ):
+
+            binding = dict(
+                zip(
+                    variables,
+                    values
+                )
+            )
+
+            grounded.append(
+                [
+                    (
+                        (
+                            literal.atom.pred,
+                            tuple(
+                                model.value_of(
+                                    argument,
+                                    binding
+                                )
+                                for argument
+                                in literal.atom.args
+                            )
+                        ),
+                        not literal.negated
+                    )
+                    for literal
+                    in clause
+                ]
+            )
+
+    return grounded
+
+
+def _solve(
+    clauses,
+    assignment=None
+):
+
+    """DPLL, with unit propagation and nothing clever.
+
+    Returns a dict from ground atom to True/False satisfying every clause, or
+    None.  The clause sets here are tiny -- a handful of predicates over three
+    elements -- so the plain algorithm is the readable choice.
+    """
+
+    if assignment is None:
+        assignment = {}
+
+    clauses, assignment = _propagate(
+        clauses,
+        dict(assignment)
+    )
+
+    if clauses is None:
+        return None
+
+    if not clauses:
+        return assignment
+
+    atom = clauses[0][0][0]
+
+    for value in (True, False):
+
+        decided = dict(
+            assignment
+        )
+
+        decided[atom] = value
+
+        result = _solve(
+            clauses,
+            decided
+        )
+
+        if result is not None:
+            return result
+
+    return None
+
+
+def _propagate(
+    clauses,
+    assignment
+):
+
+    """Simplify under the assignment, forcing every unit clause it produces.
+
+    Returns ``(clauses, assignment)``, or ``(None, assignment)`` when a clause
+    has come out empty and this branch is dead.
+    """
+
+    changed = True
+
+    while changed:
+
+        changed = False
+
+        simplified = []
+
+        for clause in clauses:
+
+            literals = []
+
+            satisfied = False
+
+            for atom, sign in clause:
+
+                if atom not in assignment:
+
+                    literals.append(
+                        (atom, sign)
+                    )
+
+                    continue
+
+                if assignment[atom] == sign:
+
+                    satisfied = True
+
+                    break
+
+            if satisfied:
+                continue
+
+            if not literals:
+                return (None, assignment)
+
+            if len(literals) == 1:
+
+                atom, sign = literals[0]
+
+                assignment[atom] = sign
+
+                changed = True
+
+                continue
+
+            simplified.append(
+                literals
+            )
+
+        clauses = simplified
+
+    return (clauses, assignment)
+
+
+def _predicate_tables(
+    predicates,
+    assignment
+):
+
+    """The satisfying assignment, turned back into one table per predicate.
+
+    Atoms the solver never had to decide are false: nothing in the clauses
+    asked for them, and the smallest relation is the clearest to read.
+    """
+
+    tables = {
+        name: set()
+        for name
+        in predicates
+    }
+
+    for (name, arguments), value in assignment.items():
+
+        if value:
+
+            tables.setdefault(
+                name,
+                set()
+            ).add(
+                arguments
+            )
+
+    return tables
+
+
+def evaluate(
+    formula,
+    model,
+    binding=None
+):
+
+    """Is this formula true in that model?
+
+    The whole point of the pass: the assumptions must evaluate to True here and
+    the conclusion to False, or what was built is not a counter-example.
+    """
+
+    if binding is None:
+        binding = {}
+
+    if isinstance(formula, Atom):
+
+        return model.holds(
+            formula,
+            binding
+        )
+
+    if isinstance(formula, Not):
+
+        return not evaluate(
+            formula.x,
+            model,
+            binding
+        )
+
+    if isinstance(formula, And):
+
+        return (
+            evaluate(formula.a, model, binding)
+            and
+            evaluate(formula.b, model, binding)
+        )
+
+    if isinstance(formula, Or):
+
+        return (
+            evaluate(formula.a, model, binding)
+            or
+            evaluate(formula.b, model, binding)
+        )
+
+    if isinstance(formula, Implies):
+
+        return (
+            not evaluate(formula.a, model, binding)
+            or
+            evaluate(formula.b, model, binding)
+        )
+
+    if isinstance(
+        formula,
+        (ForAll, Exists)
+    ):
+
+        results = []
+
+        for element in model.domain():
+
+            extended = dict(
+                binding
+            )
+
+            extended[formula.var] = element
+
+            results.append(
+                evaluate(
+                    formula.body,
+                    model,
+                    extended
+                )
+            )
+
+        if isinstance(formula, ForAll):
+            return all(results)
+
+        return any(results)
+
+    raise TypeError(formula)
+
+
+# Why a formula came out the way it did.  A reason is (key, values): the key
+# picks the sentence, the values are the elements or subformulas it names.
+#
+# The one rule worth stating: a **universal** is never explained by pointing at
+# an element -- "it holds of every element", or "vacuously, because nothing
+# satisfies the condition".  Only an **existential** names a witness, because
+# there naming one *is* the explanation.
+
+VACUOUS_UNIVERSAL = "vacuous_universal"
+UNIVERSAL_HOLDS = "universal_holds"
+UNIVERSAL_FAILS = "universal_fails"
+WITNESSED = "witnessed"
+NO_WITNESS = "no_witness"
+VACUOUS_IMPLICATION = "vacuous_implication"
+IMPLICATION_HOLDS = "implication_holds"
+IMPLICATION_FAILS = "implication_fails"
+PLAINLY = "plainly"
+
+
+def why(
+    formula,
+    model
+):
+
+    """``(verdict, reason)`` -- is it true here, and what makes it so."""
+
+    verdict = evaluate(
+        formula,
+        model
+    )
+
+    return (
+        verdict,
+        _reason(
+            formula,
+            model,
+            {},
+            verdict
+        )
+    )
+
+
+def _reason(
+    formula,
+    model,
+    binding,
+    verdict
+):
+
+    """The one sentence worth saying about why this formula came out so."""
+
+    if isinstance(formula, ForAll):
+
+        return _universal_reason(
+            formula,
+            model,
+            binding,
+            verdict
+        )
+
+    if isinstance(formula, Exists):
+
+        if verdict:
+
+            for element in model.domain():
+
+                if evaluate(
+                    formula.body,
+                    model,
+                    _with(binding, formula.var, element)
+                ):
+
+                    return (
+                        WITNESSED,
+                        {"element": element}
+                    )
+
+        return (
+            NO_WITNESS,
+            {}
+        )
+
+    if isinstance(formula, Implies):
+
+        if verdict:
+
+            if not evaluate(
+                formula.a,
+                model,
+                binding
+            ):
+
+                return (
+                    VACUOUS_IMPLICATION,
+                    {"condition": formula.a}
+                )
+
+            return (
+                IMPLICATION_HOLDS,
+                {"consequent": formula.b}
+            )
+
+        return (
+            IMPLICATION_FAILS,
+            {
+                "condition": formula.a,
+                "consequent": formula.b
+            }
+        )
+
+    return (
+        PLAINLY,
+        {}
+    )
+
+
+def _universal_reason(
+    formula,
+    model,
+    binding,
+    verdict
+):
+
+    """Why a ∀ holds -- in general terms, or vacuously; never by example."""
+
+    if not verdict:
+
+        for element in model.domain():
+
+            if not evaluate(
+                formula.body,
+                model,
+                _with(binding, formula.var, element)
+            ):
+
+                return (
+                    UNIVERSAL_FAILS,
+                    {"element": element}
+                )
+
+    # "Vacuously" has to be checked over *all* the universally quantified
+    # variables, not just the outermost one: in ∀x ∀y (F(x, y) → ¬B(x, y)) the
+    # condition is F(x, y), and it is the pair that has to be unsatisfiable.
+    variables, condition = _guarded_condition(
+        formula
+    )
+
+    if condition is not None:
+
+        satisfied = any(
+            evaluate(
+                condition,
+                model,
+                dict(
+                    binding,
+                    **dict(
+                        zip(
+                            variables,
+                            values
+                        )
+                    )
+                )
+            )
+            for values
+            in product(
+                model.domain(),
+                repeat=len(variables)
+            )
+        )
+
+        if not satisfied:
+
+            return (
+                VACUOUS_UNIVERSAL,
+                {"condition": condition}
+            )
+
+    return (
+        UNIVERSAL_HOLDS,
+        {}
+    )
+
+
+def _guarded_condition(
     formula
 ):
 
-    """The negation of the shape, as a positive statement.
+    """The ∀-bound variables, and the condition their body is guarding.
 
-    Undoing step 1.  Pushed into negation normal form with the package's own
-    ``to_nnf``, so ``¬(¬P(c4) ∧ ∀x ∀y ¬Q(x, y))`` comes out as
-    ``P(c4) ∨ ∃x ∃y Q(x, y)`` -- what would have had to be true for the
-    conclusion to follow.
+    ``(["x", "y"], F(x, y))`` for ``∀x ∀y (F(x, y) → ¬B(x, y))``; the variables
+    come back with the condition because a condition mentioning ``y`` cannot be
+    evaluated without binding ``y`` too.
     """
 
-    return to_nnf(
-        Not(
-            formula
+    variables = []
+
+    while isinstance(formula, ForAll):
+
+        variables.append(
+            formula.var
         )
+
+        formula = formula.body
+
+    if isinstance(formula, Implies):
+
+        return (
+            variables,
+            formula.a
+        )
+
+    if (
+        isinstance(formula, Or)
+        and
+        isinstance(formula.a, Not)
+    ):
+
+        return (
+            variables,
+            formula.a.x
+        )
+
+    return (
+        variables,
+        None
+    )
+
+
+def _with(
+    binding,
+    variable,
+    element
+):
+
+    """``binding`` extended with one more variable."""
+
+    extended = dict(
+        binding
+    )
+
+    extended[variable] = element
+
+    return extended
+
+
+# ================================================================
+# SORTS
+# ================================================================
+#
+# A counter-model reads badly when everything is thrown into one universe:
+# F(x, y) relates two different kinds of thing, and g1(c) -- sitting in F's
+# second place -- is not the same kind of thing as c.  So the argument
+# positions are sorted first, and everything after that is said per universe.
+#
+# The rule is the only one there is: two positions are the same sort when
+# something occurs in both.  A variable shared between D(x) and F(x, y) merges
+# D·1 with F·1; a term occurring in two places merges those; a function's
+# result belongs to whatever position it is written into.  Positions never
+# linked stay apart, which is what keeps F(x, y) two universes by default.
+
+
+RESULT = "result"
+
+
+class Sorts:
+
+    """Argument positions, merged into universes -- a union-find."""
+
+    def __init__(self):
+
+        self.parent = {}
+
+    def find(self, node):
+
+        """The universe a position belongs to."""
+
+        self.parent.setdefault(
+            node,
+            node
+        )
+
+        while self.parent[node] != node:
+
+            self.parent[node] = self.parent[
+                self.parent[node]
+            ]
+
+            node = self.parent[node]
+
+        return node
+
+    def merge(self, one, other):
+
+        """Say that these two positions hold the same kind of thing."""
+
+        one = self.find(one)
+
+        other = self.find(other)
+
+        if one != other:
+
+            self.parent[other] = one
+
+    def universes(self):
+
+        """Every universe, as a map from its representative to its positions."""
+
+        grouped = {}
+
+        for node in self.parent:
+
+            grouped.setdefault(
+                self.find(node),
+                []
+            ).append(
+                node
+            )
+
+        return {
+            root: sorted(members)
+            for root, members
+            in grouped.items()
+        }
+
+
+def sorts_of(clauses):
+
+    """Infer the universes from where each variable and term is written.
+
+    Runs over the clauses *as they entered the search*, not only the survivors:
+    a link made by a clause that was later subsumed is still a fact about the
+    vocabulary.
+    """
+
+    sorts = Sorts()
+
+    for clause in clauses:
+
+        occurrences = {}
+
+        for literal in clause:
+
+            for index, argument in enumerate(
+                literal.atom.args
+            ):
+
+                _place_term(
+                    argument,
+                    (literal.atom.pred, index),
+                    sorts,
+                    occurrences
+                )
+
+        for places in occurrences.values():
+
+            for other in places[1:]:
+
+                sorts.merge(
+                    places[0],
+                    other
+                )
+
+    return sorts
+
+
+def _place_term(
+    term,
+    position,
+    sorts,
+    occurrences
+):
+
+    """Record that ``term`` is written at ``position``, and recurse into it."""
+
+    sorts.find(
+        position
+    )
+
+    key = (
+        term.name
+        if term.is_var
+        else _term_key(term)
+    )
+
+    occurrences.setdefault(
+        key,
+        []
+    ).append(
+        position
+    )
+
+    if term.is_var:
+        return
+
+    if term.args:
+
+        # The function's result is whatever this position holds; its arguments
+        # are sorted by their own places in it.
+        sorts.merge(
+            position,
+            (term.name, RESULT)
+        )
+
+        for index, argument in enumerate(
+            term.args
+        ):
+
+            _place_term(
+                argument,
+                (term.name, index),
+                sorts,
+                occurrences
+            )
+
+
+def _term_key(term):
+
+    """A term as a hashable key -- ``g1(c)`` and ``g1(c)`` are the same thing."""
+
+    if not term.args:
+        return term.name
+
+    return (
+        term.name,
+        tuple(
+            _term_key(argument)
+            for argument
+            in term.args
+        )
+    )
+
+
+# ================================================================
+# NAMING AND DESCRIBING
+# ================================================================
+
+LETTERS = "ABCDEFGH"
+
+
+class Naming:
+
+    """Which universe each position belongs to, and what the witnesses are called.
+
+    A universe gets a letter in order of first appearance; a witness gets that
+    letter in lower case and a number, in its **own** universe.  So the Skolem
+    term ``g1(c)``, written into ``F``'s second place, is ``b1`` -- not another
+    ``a``, which is the whole point of sorting the positions first.
+    """
+
+    def __init__(
+        self,
+        sorts,
+        clauses
+    ):
+
+        self.sorts = sorts
+
+        self.letters = {}
+
+        self.witnesses = []
+
+        self._names = {}
+
+        self._collect(
+            clauses
+        )
+
+    def letter_for(
+        self,
+        position
+    ):
+
+        """The universe a position belongs to, as a letter."""
+
+        root = self.sorts.find(
+            position
+        )
+
+        if root not in self.letters:
+
+            self.letters[root] = LETTERS[
+                len(self.letters)
+                %
+                len(LETTERS)
+            ]
+
+        return self.letters[
+            root
+        ]
+
+    def name_of(
+        self,
+        term
+    ):
+
+        """What this ground term is called, or None if it is not a witness."""
+
+        return self._names.get(
+            _term_key(term)
+        )
+
+    def _collect(
+        self,
+        clauses
+    ):
+
+        """Name every ground term, in the universe it is written into."""
+
+        counts = {}
+
+        # Letters first, in the order the positions are written, so universe A
+        # is the one the reader meets first rather than whichever happened to
+        # hold the first ground term.
+        for clause in clauses:
+
+            for literal in clause:
+
+                for index, argument in enumerate(
+                    literal.atom.args
+                ):
+
+                    self._walk_positions(
+                        argument,
+                        (literal.atom.pred, index)
+                    )
+
+        for clause in clauses:
+
+            for literal in clause:
+
+                for index, argument in enumerate(
+                    literal.atom.args
+                ):
+
+                    self._name_term(
+                        argument,
+                        (literal.atom.pred, index),
+                        counts
+                    )
+
+    def _walk_positions(
+        self,
+        term,
+        position
+    ):
+
+        """Give every position a letter, in the order it appears."""
+
+        self.letter_for(
+            position
+        )
+
+        if term.is_var:
+            return
+
+        for index, argument in enumerate(
+            term.args
+        ):
+
+            self._walk_positions(
+                argument,
+                (term.name, index)
+            )
+
+    def _name_term(
+        self,
+        term,
+        position,
+        counts
+    ):
+
+        """Give a ground term a name in its universe, once."""
+
+        if term.is_var:
+            return
+
+        for index, argument in enumerate(
+            term.args
+        ):
+
+            self._name_term(
+                argument,
+                (term.name, index),
+                counts
+            )
+
+        if not _is_ground(term):
+
+            # g1(x) is not a witness -- it is a function of whatever x is.  Only
+            # closed terms name an element of a universe.
+            return
+
+        key = _term_key(
+            term
+        )
+
+        if key in self._names:
+            return
+
+        letter = self.letter_for(
+            position
+        )
+
+        counts[letter] = counts.get(
+            letter,
+            0
+        ) + 1
+
+        name = f"{letter.lower()}{counts[letter]}"
+
+        self._names[key] = name
+
+        self.witnesses.append(
+            (
+                name,
+                letter,
+                self._render_term(
+                    term
+                )
+            )
+        )
+
+    def _render_term(
+        self,
+        term
+    ):
+
+        """A term with its inner witnesses already named: ``g1(a1)``."""
+
+        if not term.args:
+            return term.name
+
+        return (
+            term.name
+            + "("
+            + ", ".join(
+                self.name_of(argument)
+                or
+                self._render_term(argument)
+                for argument
+                in term.args
+            )
+            + ")"
+        )
+
+    def universes(self):
+
+        """Each universe: its letter, the positions in it, and its witnesses."""
+
+        listed = []
+
+        for root, members in self.sorts.universes().items():
+
+            letter = self.letter_for(
+                members[0]
+            )
+
+            listed.append(
+                (
+                    letter,
+                    [
+                        _position_label(position)
+                        for position
+                        in members
+                    ],
+                    [
+                        (name, term)
+                        for name, where, term
+                        in self.witnesses
+                        if where == letter
+                    ]
+                )
+            )
+
+        return sorted(
+            listed
+        )
+
+
+def _is_ground(term):
+
+    """Does this term mention no variable at all?"""
+
+    if term.is_var:
+        return False
+
+    return all(
+        _is_ground(argument)
+        for argument
+        in term.args
+    )
+
+
+def _position_label(position):
+
+    """``P·1`` for an argument place, ``g1·→`` for a function's result."""
+
+    symbol, index = position
+
+    if index == RESULT:
+        return f"{symbol}·→"
+
+    return f"{symbol}·{index + 1}"
+
+
+def describe(
+    clauses,
+    naming
+):
+
+    """Every surviving clause as a statement about the model.
+
+    Each one keeps its quantifiers: a clause with variables says something
+    about *every* element of the universes those variables range over, and only
+    the ground terms are named.  The wording is the narration's business, so
+    what comes back is structure -- the variables with their universes, the
+    conditions, and what follows.
+    """
+
+    statements = []
+
+    for clause in clauses:
+
+        variables = []
+
+        for literal in clause:
+
+            for index, argument in enumerate(
+                literal.atom.args
+            ):
+
+                _variables_in(
+                    argument,
+                    (literal.atom.pred, index),
+                    naming,
+                    variables
+                )
+
+        statements.append(
+            {
+                "variables": variables,
+                "conditions": [
+                    _render_literal(literal, naming)
+                    for literal
+                    in clause
+                    if literal.negated
+                ],
+                "consequences": [
+                    _render_literal(literal, naming)
+                    for literal
+                    in clause
+                    if not literal.negated
+                ],
+            }
+        )
+
+    return statements
+
+
+def _variables_in(
+    term,
+    position,
+    naming,
+    found
+):
+
+    """Collect ``(variable, universe)`` pairs, in order of first appearance."""
+
+    if term.is_var:
+
+        pair = (
+            term.name,
+            naming.letter_for(position)
+        )
+
+        if pair not in found:
+
+            found.append(
+                pair
+            )
+
+        return
+
+    for index, argument in enumerate(
+        term.args
+    ):
+
+        _variables_in(
+            argument,
+            (term.name, index),
+            naming,
+            found
+        )
+
+
+def _render_literal(
+    literal,
+    naming
+):
+
+    """``B(a1, y)`` -- witnesses by name, variables as they stand."""
+
+    return (
+        literal.atom.pred
+        + "("
+        + ", ".join(
+            _render_argument(argument, naming)
+            for argument
+            in literal.atom.args
+        )
+        + ")"
+    )
+
+
+def _render_argument(
+    term,
+    naming
+):
+
+    """One argument: its witness name if it has one, else itself."""
+
+    if term.is_var:
+        return term.name
+
+    name = naming.name_of(
+        term
+    )
+
+    if name is not None:
+        return name
+
+    return (
+        term.name
+        + "("
+        + ", ".join(
+            _render_argument(argument, naming)
+            for argument
+            in term.args
+        )
+        + ")"
+    )
+
+
+def witness_elements(
+    model,
+    naming,
+    clauses
+):
+
+    """Which domain element each named witness denotes, for the explanations.
+
+    The finite model is not printed -- it is the proof that the description is
+    satisfiable -- but when an explanation wants to point at a witness, this is
+    what turns the model's element back into the name the reader has been given.
+    """
+
+    names = {}
+
+    for clause in clauses:
+
+        for literal in clause:
+
+            for argument in literal.atom.args:
+
+                _element_of(
+                    argument,
+                    model,
+                    naming,
+                    names
+                )
+
+    return names
+
+
+def _element_of(
+    term,
+    model,
+    naming,
+    names
+):
+
+    """Record the element a ground term denotes, and recurse into it."""
+
+    if term.is_var:
+        return
+
+    for argument in term.args:
+
+        _element_of(
+            argument,
+            model,
+            naming,
+            names
+        )
+
+    name = naming.name_of(
+        term
+    )
+
+    if name is None:
+        return
+
+    try:
+
+        element = model.value_of(
+            term,
+            {}
+        )
+
+    except KeyError:
+        return
+
+    names.setdefault(
+        element,
+        name
     )

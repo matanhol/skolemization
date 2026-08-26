@@ -632,54 +632,121 @@ The relation axioms stay general, without the substitution:""",
     "focused_kb":
     "The KB after focusing on {witness}",
 
-    "counterexample_header":
-    "What a counter-model has to look like",
+    "countermodel_header":
+    "A counter-model",
 
-    "counterexample_intro_1":
+    "countermodel_intro_1":
     """
-A saturated search is not only "no contradiction found": a saturated""",
+The search saturated without a contradiction, so the clause set is""",
 
-    "counterexample_intro_2":
-    "clause set with no □ in it is satisfiable, and there is a model inside",
+    "countermodel_intro_2":
+    "satisfiable -- and here is a model of it. It satisfies every surviving",
 
-    "counterexample_intro_3":
-    """it. The clauses that came from the negated conclusion say what that
-model has to look like.""",
+    "countermodel_intro_3":
+    "clause, and so the assumptions and the negated conclusion: a counter-model.",
 
-    "counterexample_entered":
+    "countermodel_check":
     """
-The clauses of the negated conclusion, as they entered:""",
+Checking the model against the original question:""",
 
-    "counterexample_reduced":
-    """
-After the one-literal clauses the search found have simplified them:""",
+    "countermodel_assumption_true":
+    "    the assumption holds:",
 
-    "counterexample_shape":
-    """
-and read back as a formula (without undoing the Skolemization, so the
-witnesses stay):""",
+    "countermodel_assumption_false":
+    "    ⚠️ the assumption fails -- which should not happen:",
 
-    "counterexample_together":
-    """
-Every counter-model must satisfy this, together with the assumptions.""",
+    "countermodel_conclusion_false":
+    "    the conclusion fails:",
 
-    "counterexample_needed":
-    """
-Its negation is what the conclusion would have needed:""",
+    "countermodel_conclusion_true":
+    "    ⚠️ the conclusion holds -- which should not happen:",
 
-    "counterexample_nothing":
+    "countermodel_verdict":
     """
-Nothing is left of the negated conclusion -- it was consumed entirely.""",
+The assumptions hold and the conclusion does not, so it does not follow from them.""",
 
-    "counterexample_refused_focused":
+    "countermodel_not_found":
     """
-No counter-model was read off: this is the focused KB, and the
-substitution in it is a guess.""",
+No finite model was found up to size {largest}. Every model of these
+clauses may be infinite, or a larger domain may be needed.""",
 
-    "counterexample_refused_support":
+    "countermodel_refused_focused":
     """
-No counter-model was read off: the search ran with a set of support, so
-its running dry certifies nothing.""",
+No counter-model was built: this is the focused KB, and the substitution
+in it is a guess.""",
+
+    "countermodel_refused_support":
+    """
+No counter-model was built: the search ran with a set of support, so its
+running dry certifies nothing.""",
+
+    "reason_vacuous_universal":
+    "vacuously: no element of the model satisfies",
+
+    "reason_universal_holds":
+    "it holds of every element of the domain.",
+
+    "reason_universal_fails":
+    "it fails for {element}.",
+
+    "reason_witnessed":
+    "witnessed by {element}.",
+
+    "reason_no_witness":
+    "no element of the model satisfies it.",
+
+    "reason_vacuous_implication":
+    "vacuously: the left-hand side does not hold here --",
+
+    "reason_implication_holds":
+    "the right-hand side holds here --",
+
+    "reason_implication_fails":
+    "the left-hand side holds but the right-hand side does not --",
+
+    "reason_plainly":
+    "that is how it comes out in the model.",
+
+    "countermodel_gave_up_separate_witnesses":
+    """
+The clauses force two witnesses onto the same element -- there was no choice.""",
+
+    "countermodel_gave_up_no_self_application":
+    """
+The clauses force a function to send an element to itself -- there was no choice.""",
+
+    "countermodel_universes":
+    """
+The universes -- every argument place has a sort, kept apart unless something links them:""",
+
+    "countermodel_universe":
+    "universe {letter}:  {positions}",
+
+    "countermodel_witnesses":
+    "witnesses: {witnesses}",
+
+    "countermodel_no_witnesses":
+    "no witness needed.",
+
+    "countermodel_facts":
+    """
+What holds in the model -- everything else is free:""",
+
+    "countermodel_for_every":
+    "for every {variables}:",
+
+    "countermodel_if_then":
+    "if {conditions} then {consequences}",
+
+    "countermodel_never":
+    "never {conditions}",
+
+    "countermodel_always":
+    "always {consequences}",
+
+    "countermodel_size":
+    """
+The universes are of no fixed size: any size that holds the witnesses will do.""",
 
 }
 

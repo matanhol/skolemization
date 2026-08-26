@@ -61,7 +61,7 @@ EXPLAIN_SATURATION = True
 # on a witness-focused KB, or under SET_OF_SUPPORT.  Those refusals are printed
 # rather than silent.
 
-EXPLAIN_COUNTEREXAMPLE = False
+EXPLAIN_COUNTEREXAMPLE = True
 
 # Set of support: seed a "supported" set with the clauses of the negated
 # conclusion, and allow only inferences that touch it -- every result joining
@@ -229,4 +229,4 @@ NEGATED_EQUALITY = "≠"
 # is what a byte-for-byte comparison wants, and what makes the output paste
 # back in as input.
 
-TALL_BRACKETS = True
+TALL_BRACKETS = False

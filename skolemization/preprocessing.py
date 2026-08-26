@@ -39,6 +39,13 @@ class Preprocessed:
     axiom_clauses: frozenset = frozenset()
     conclusion_clauses: frozenset = frozenset()
 
+    # The parsed input, kept for anything that has to talk about the question
+    # rather than about the clauses -- counterexample.py evaluates these in the
+    # model it builds, which is how a counter-model is checked rather than
+    # asserted.
+    assumption_formulas: tuple = ()
+    conclusion_formula: object = None
+
     @property
     def witness(self):
         """The name skolemization gives its first constant."""
@@ -119,7 +126,9 @@ def preprocess(
             clauses,
             names,
             axiom_clauses,
-            conclusion_clauses
+            conclusion_clauses,
+            tuple(formulas[:-1]),
+            formulas[-1].x
         )
 
     no_implications = (
@@ -176,7 +185,9 @@ def preprocess(
         clauses,
         names,
         axiom_clauses,
-        conclusion_clauses
+        conclusion_clauses,
+        tuple(formulas[:-1]),
+        formulas[-1].x
     )
 
 

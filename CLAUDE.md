@@ -606,27 +606,40 @@ different search; if it ever finds a genuinely new clause it says so rather than
 that would mean a bug. It lives inside `run_resolution_search` (only there is `ever_seen` in
 scope, which is what distinguishes "already in the KB" from "derived earlier and dropped").
 
-**A saturated KB can be read backwards into a counter-model**
+**A saturated KB is a counter-model, and can be described as one**
 (`counterexample.py`, `config.EXPLAIN_COUNTEREXAMPLE`, **off**, experimental). Refutation
 completeness has a second half: a clause set saturated under a complete calculus with no □ in it
-*is* satisfiable, and the usual proof is constructive. So the clauses that came from the negated
-conclusion say what any counter-model must look like. The pass takes those clauses — `preprocess`
-already reports them as `Preprocessed.conclusion_clauses` — lets the KB's units simplify them, and
-undoes the pipeline: step 7 back into a conjunction of disjunctions, step 5 into a universal
-closure, step 2 folding `¬A ∨ B` back into `A → B`, and step 1 negating the result to say what the
-conclusion would have needed. **Step 4 is deliberately not undone**: keeping the Skolem witnesses is
-what makes the output a statement about named objects rather than a re-quantified formula. On
-`phi1_implies_phi2` it comes out as `¬P(c4) ∧ ∀x ∀y ¬Q(x, y)` — Q empty, c4 not P — which is a
-counter-model, verified by brute force: two of them at domain size 2, none at size 1.
+*is* satisfiable. The surviving clauses are not an obstacle to reading that model — they are the
+description of it, and the pass says so in the vocabulary of the problem.
 
-Two things it must keep refusing, out loud rather than silently: a **focused** KB (the substitution
-in it is a guess) and a run under **`SET_OF_SUPPORT`** (which never tried the inferences among the
-assumptions, so its running dry certifies nothing). And one asymmetry it depends on: when a unit
-cancels a literal here, **the unit may be instantiated and the clause may not** — instantiating a
-universally quantified unit is universal instantiation and free, while binding a variable of the
-clause would strengthen it. `subsumption.resolve_with_unit` refuses both, because the sweep it
-serves rewrites the KB in place; `counterexample.simplify_against_units` is the weaker guard, for
-clauses being read rather than kept.
+**The universes are inferred, not assumed.** A union-find over argument positions — `(P, 1)`,
+`(g1, result)` — merged whenever the same variable or the same term is written in two of them. So
+`D(x)` with `F(x, y)` puts `D·1` and `F·1` in one universe, `F(x, y)` keeps its two places apart
+unless something links them, and a Skolem term written into `F`'s second place belongs *there*, not
+with the constant it was built from. Inference runs over the clauses **as they entered**, since a
+link made by a clause later subsumed is still a fact about the vocabulary.
+
+**Universals stay universal.** Each surviving clause prints as one statement with its quantifiers
+intact — `for every x ∈ A, y ∈ B: never F(x, y) ∧ B(x, y)` — and only ground terms are named, each
+in its own universe (`a1 = c`, and a Skolem application in `B` would be `b1`). No witness is invented
+that the clauses do not force, and the universes have no stated size: any size holding the witnesses
+will do. Enumerating a domain instead would throw away both facts.
+
+**A finite model is built and never printed.** `finite_model` searches domain sizes with DPLL over
+the ground instances; it is the proof that the description is satisfiable rather than merely
+plausible, and it is what the explanations point at when they name a witness. It prefers separate
+witnesses and `f(a) ≠ a` over a smaller domain, because `g1(e1) = e1` reads as "the owner of x is x".
+
+**Every assumption is explained, and a `∀` never by example.** `why` returns a structured reason:
+vacuous (naming the condition nothing satisfies — checked over *all* the ∀-bound variables, not just
+the outermost), true of every element, witnessed by a named element for an `∃`, or an implication
+whose left-hand side fails. The assumptions must come out true and the conclusion false; a wrong
+verdict is printed with a ⚠️ rather than smoothed over, since it would mean the model, the
+saturation or the evaluator is broken.
+
+Two refusals, said out loud: a **focused** KB (its substitution is a guess) and a run under
+**`SET_OF_SUPPORT`** (which never tried the inferences among the assumptions, so its running dry
+certifies nothing).
 
 **Every saturating search explains itself, the focused pass included** — that is where the reader
 most needs it, since the focused KB is a guess. What differs is the closing sentence, and it must:
