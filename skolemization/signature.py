@@ -73,6 +73,25 @@ class Signature:
 
         return set(self.uses)
 
+    @property
+    def predicates(self):
+        """The predicate names, in the order they are first written.
+
+        ``uses`` is insertion-ordered and ``signature_of`` fills it by walking
+        the assumptions left to right, depth first, so filtering it is already
+        the order the reader met each predicate in the problem as written.  The
+        counter-model orders the facts it prints by that -- and this walk is the
+        only place that knows it, so throwing it away would mean walking every
+        formula a second time to recover it.
+        """
+
+        return tuple(
+            name
+            for name, use
+            in self.uses.items()
+            if use.kind == PREDICATE
+        )
+
 
 def signature_of(
     formulas,

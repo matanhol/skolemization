@@ -297,7 +297,10 @@ Direction is handled at two levels, and both are needed:
    inherit the RTL paragraph direction and move to the wrong side, and `(`, `)` and `∃` are
    mirrored characters, so they flip glyphs as well. An LTR isolate covers the whole
    expression, symbols and brackets included. A lone symbol ending a Hebrew sentence
-   (`הורדת כמתי ∀`) is the exception — it should inherit RTL, so leave it unmarked.
+   (`הורדת כמתי ∀`) is the exception — it should inherit RTL, so leave it unmarked. So is a
+   line that is *nothing but* a formula, the counter-model's fact lines among them: with no
+   strong-RTL character on it `say` leaves it LTR already, and an isolate would only add
+   invisible bytes to a line that was never going to move.
 
 **The direction follows the language, and is not a separate setting.** Each catalogue declares its
 `DIRECTION`, and `config.RTL_OUTPUT` is `"auto"` by default: Hebrew gets the marks, English would
@@ -333,10 +336,10 @@ formula the examples print (572 of them; the rest hold Skolem constants, which a
 language) and a generated corpus of 4000. "Same" means up to the associativity of `∧`/`∨`, since a
 run prints flat: `A ∧ (B ∧ C)` and `(A ∧ B) ∧ C` print alike and re-parse to the left-nested one.
 
-**A formula is a block, not a line** (`config.TALL_BRACKETS`, **on** by default). `P(x)` and
-`g1(x)` are an *application*, so the ordinary one-row `( )` belongs to them and no grouping bracket
-may be that small: grouping brackets are stacked out of `⎛ ⎜ ⎝` / `⎞ ⎟ ⎠`, three rows for the
-innermost level and two more for every level outwards, formula on the middle row.
+**A formula can be a block rather than a line** (`config.TALL_BRACKETS`, **off** by default).
+`P(x)` and `g1(x)` are an *application*, so the ordinary one-row `( )` belongs to them and no
+grouping bracket may be that small: grouping brackets are stacked out of `⎛ ⎜ ⎝` / `⎞ ⎟ ⎠`, three
+rows for the innermost level and two more for every level outwards, formula on the middle row.
 
 ```
    ⎛                     ⎞
@@ -349,9 +352,11 @@ innermost level and two more for every level outwards, formula on the middle row
 So `formula_str` returns text that may contain newlines, and **nothing may interpolate it into a
 sentence**. Callers go through `output.say_block(label, text, indent)`, which keeps a one-row
 formula on the label's line and otherwise prints the label alone and indents the rows under it —
-each row in its own `ltr()` isolate, because an isolate must not span a newline. Turning
-`TALL_BRACKETS` off prints the same brackets as ordinary `( )` on one line, which is what the
-round-trip test uses and what makes output paste back in as input.
+each row in its own `ltr()` isolate, because an isolate must not span a newline. The rule holds
+whatever the flag says, because `display` reads it where it renders, not at import: a caller that
+formats a formula into a line of its own looks fine until someone turns the flag on. Left off, which
+is the default, those same brackets print as ordinary `( )` on one line — which is what the
+round-trip test needs and what makes the output paste back in as input.
 
 **How much the steps explain** is three more flags: `SHOW_KB_AFTER_EACH_STEP`, `SHOW_SUBSTEPS`
 and `SHOW_UNCHANGED_FORMULAS` (that last one off — a before/after pair of identical text buries
@@ -469,7 +474,9 @@ functions `g → h → i`, each universe taking the next letter still free. This
 because the user's `g1` and the invented `g1` were the same string.
 
 Consequently **the witness name is never hardcoded**. `preprocess` returns a `Preprocessed`
-record (clauses, the chosen `SkolemNames`, and which clauses came from generated axioms), `prove`
+record (the clauses, the chosen `SkolemNames`, the parsed assumptions and conclusion, which clauses
+came from the generated axioms and which from the conclusion, and the order the predicates are
+written in), `prove`
 reads `.witness` and `.witnesses` off it, and `focus.py` / `narration.py` take them as parameters.
 `config.FOCUS_ON_WITNESS` (formerly `FOCUS_ON_C`) gates that pass — and it only runs when
 skolemization invented exactly one witness; `config.FALLBACK_TO_GENERAL` re-runs the search on the
@@ -635,7 +642,7 @@ that would mean a bug. It lives inside `run_resolution_search` (only there is `e
 scope, which is what distinguishes "already in the KB" from "derived earlier and dropped").
 
 **A saturated KB is a counter-model, and can be described as one**
-(`counterexample.py`, `config.EXPLAIN_COUNTEREXAMPLE`, **off**, experimental). Refutation
+(`counterexample.py`, `config.EXPLAIN_COUNTEREXAMPLE`, **on**, experimental). Refutation
 completeness has a second half: a clause set saturated under a complete calculus with no □ in it
 *is* satisfiable. The surviving clauses are not an obstacle to reading that model — they are the
 description of it, and the pass says so in the vocabulary of the problem.
@@ -649,9 +656,10 @@ link made by a clause later subsumed is still a fact about the vocabulary.
 
 **The universes are never explained, only used.** Nothing prints a list of argument places: the
 *names* carry the sorts, because skolemization already chose them that way — `c` against `d`. The
-block opens with the witnesses, one line per universe, then says what is known about them.
-Universals stay universal (`for every y: always B(c1, y)`), and a fact mentioning several witnesses
-is stated once under all of them rather than repeated under each.
+block opens with the witnesses, one line per universe, then says what is known about them under a
+bare heading of the names the facts are about (`c1, c2:` — there is no word to wrap around a list of
+names, and none is invented), and a fact mentioning several witnesses is stated once under all of
+them rather than repeated under each.
 
 **What gets said is what the question does not already say.** Three kinds of thing, because those
 are the three a reader cannot get from the assumptions: a predicate that **never** or **always**
@@ -660,6 +668,29 @@ gathered onto its own line instead of scattered across a clause list; and whatev
 added** that is neither. A surviving clause that is one of the assumptions' own clauses is dropped —
 `preprocess` reports which positions those are, so a restatement is recognised rather than guessed
 at. Saying them back to the reader is what made the first version unreadable.
+
+**Every fact is said as a formula, in every language** (`display.clause_as_formula`). A clause is a
+disjunction, but that is not how anyone states the fact it stands for: the negative literals are the
+conditions and the positive ones the consequences, so the reading is an implication where there are
+both, a denial where there are only conditions, and a plain disjunction where there are only
+consequences. One literal is `¬D(c1)`, all-negative is `∀x ¬(D(x) ∧ B(x, g(x)))`, mixed is
+`∀x (D(x) → ¬B(x, g(x)))`, all-positive is `∀x (P(x) ∨ Q(x))`. The **never** and **always** sections
+are formulas under a plain header the same way (`∀x ¬D(x)`), not a comma-list of predicate names
+folded into a sentence. The body is a real formula tree handed to the ordinary printer, so the four
+bracket rules above hold inside it and equality still comes out `x ≠ y`; only the `∀` prefix is
+written **flat** — `∀x ∀y `, not the `∀x (∀y (…))` `formula_str` would give — because the block is a
+list of terse facts, and burying each one a bracket deeper than the last is what a reader cannot
+follow.
+
+**The facts are ordered, not left in clause order** (`counterexample._line_order`), and every list
+in the block by the same three keys: **arity**, so one-argument predicates come first; **specificity**,
+so a fact about named witnesses comes before one carrying a `∀`; and then **the order the predicate
+is first written in the problem**, which is the order the reader is already holding. A clause of
+several literals is led by its smallest such key, and a predicate the problem never wrote — `=`, or
+anything the search invented — sorts after every one it did. That third key costs nothing:
+`signature_of` already walks the assumptions left to right and `Signature.uses` is insertion-ordered,
+so `Signature.predicates` only reads it back out and `Preprocessed.predicate_order` carries it to
+the pass; recovering it anywhere else would mean walking every formula a second time.
 
 **A finite model is built and never printed.** `finite_model` searches domain sizes with DPLL over
 the ground instances; it is the proof that the description is satisfiable rather than merely

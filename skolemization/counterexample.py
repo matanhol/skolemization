@@ -32,6 +32,7 @@ when nothing is found it says so rather than implying there is no model.
 from itertools import product
 
 from .clauses import canonical_clause
+from .display import clause_as_formula
 from .sorts import (
     RESULT,
     is_ground,
@@ -41,7 +42,6 @@ from .sorts import (
 )
 from .formulas import (
     And,
-    Literal,
     Atom,
     Exists,
     ForAll,
@@ -1003,6 +1003,20 @@ def _with(
 # the search added on top.  The witnesses are named already -- skolemization
 # named them after their universes (steps/skolemize.py) -- so nothing here
 # renames anything.
+#
+# Everything said is said as a **formula**.  Prose around a clause ("for every
+# y: B(c1, y) holds") is a second notation for something the reader has been
+# reading in the first one since step 1, and it was the prose that made the
+# block unreadable.  So every fact is rendered by display.clause_as_formula and
+# comes out of here as a finished line; the narration only indents and prints.
+#
+# The lines are ordered rather than left in clause order, because clause order
+# is the search's history and says nothing about the model.  Three keys, in
+# _line_order: arity first, so what is known about single things comes before
+# what is known about pairs; then a fact about named witnesses before one
+# carrying a ∀, since the concrete is what a reader anchors on; then the order
+# the predicates were first written in the problem, so a block reads in the
+# vocabulary of the question rather than alphabetically or by accident.
 
 
 def witnesses_by_universe(
@@ -1058,15 +1072,25 @@ def witnesses_by_universe(
 
 def describe(
     clauses,
-    already_said=()
+    already_said=(),
+    predicate_order=()
 ):
 
-    """What is worth saying about the model, and nothing else.
+    """What is worth saying about the model, as lines ready to print.
+
+    Every value in the returned dict -- ``never``, ``always``, ``added``, and
+    each group's facts -- is a list of rendered formula lines, already in the
+    order they are to be read (see ``_line_order``).  A line may contain
+    newlines under ``config.TALL_BRACKETS``, exactly like ``formula_str``, so
+    the narration prints it with ``output.say_block``.
 
     Facts mentioning witnesses are grouped by *which* witnesses they mention,
     so a fact about two of them is stated once under both rather than repeated
-    under each.  ``already_said`` is the assumptions' own clauses: a survivor
-    that is one of them is the question restated.
+    under each; the groups keep the order the witnesses were first met in.
+    ``already_said`` is the assumptions' own clauses: a survivor that is one of
+    them is the question restated.  ``predicate_order`` is the order the
+    predicates are first written in the problem, and is the last of the sort
+    keys.
     """
 
     said = {
@@ -1087,20 +1111,30 @@ def describe(
 
     for clause in clauses:
 
+        # Key and line together, so the sorting can be done on the way out
+        # without asking the clause anything twice.
+        entry = (
+            _line_order(
+                clause,
+                predicate_order
+            ),
+            clause_as_formula(
+                clause
+            )
+        )
+
         universal = _universal_unit(
             clause
         )
 
         if universal is not None:
 
-            predicate, negated = universal
-
             (
                 never
-                if negated
+                if universal.negated
                 else always
             ).append(
-                predicate
+                entry
             )
 
             continue
@@ -1109,10 +1143,6 @@ def describe(
             _constants_in(
                 clause
             )
-        )
-
-        statement = _statement(
-            clause
         )
 
         if mentioned:
@@ -1126,7 +1156,7 @@ def describe(
                 )
 
             groups[mentioned].append(
-                statement
+                entry
             )
 
             continue
@@ -1135,33 +1165,117 @@ def describe(
             continue
 
         added.append(
-            statement
+            entry
         )
 
     return {
-        "never": never,
-        "always": always,
+        "never": _ordered_lines(never),
+        "always": _ordered_lines(always),
         "groups": [
             (
                 list(names),
-                groups[names]
+                _ordered_lines(
+                    groups[names]
+                )
             )
             for names
             in order
         ],
-        "added": added,
+        "added": _ordered_lines(added),
     }
+
+
+def _ordered_lines(
+    entries
+):
+
+    """The lines of these ``(key, line)`` pairs, in the order they read best.
+
+    The sort is stable, so two facts the keys cannot separate stay in clause
+    order -- there is nothing better to say about them than the order they were
+    derived in.
+    """
+
+    return [
+        line
+        for _, line
+        in sorted(
+            entries,
+            key=lambda entry: entry[0]
+        )
+    ]
+
+
+def _line_order(
+    clause,
+    predicate_order
+):
+
+    """The sort key of one fact: arity, then specificity, then appearance.
+
+    A clause of several literals is led by its smallest ``(arity,
+    appearance)``: the predicate a reader will read first is the one the line
+    is about.  A predicate the problem never wrote -- ``=``, or anything the
+    search invented -- has no place in ``predicate_order`` and sorts after
+    everything that does, rather than raising.
+    """
+
+    arity, appearance = min(
+        (
+            (
+                len(literal.atom.args),
+                _appearance(
+                    literal.atom.pred,
+                    predicate_order
+                )
+            )
+            for literal
+            in clause
+        ),
+        default=(
+            0,
+            len(predicate_order)
+        )
+    )
+
+    return (
+        arity,
+        # A fact about named witnesses before one carrying a ∀: the concrete
+        # is what the reader anchors the general statements to.
+        1 if variables_of(clause) else 0,
+        appearance
+    )
+
+
+def _appearance(
+    predicate,
+    predicate_order
+):
+
+    """Where the problem first wrote this predicate, or after all of them."""
+
+    if predicate in predicate_order:
+
+        return predicate_order.index(
+            predicate
+        )
+
+    return len(
+        predicate_order
+    )
 
 
 def _universal_unit(
     clause
 ):
 
-    """``(predicate, negated)`` when the clause says a predicate never or always holds.
+    """The literal, when the clause says a predicate never or always holds.
 
     One literal, every argument a distinct variable: ``¬D(x)`` is "nothing is a
     D", ``P(x, y)`` is "P holds of every pair".  Anything mentioning a witness
-    is about particular elements and belongs with them instead.
+    is about particular elements and belongs with them instead.  The literal
+    comes back rather than a verdict because the caller needs its sign to know
+    which of the two lists the line belongs in.
     """
 
     if len(clause) != 1:
@@ -1189,10 +1303,7 @@ def _universal_unit(
 
         return None
 
-    return (
-        literal.atom.pred,
-        literal.negated
-    )
+    return literal
 
 
 def _constants_in(
@@ -1233,40 +1344,3 @@ def _constants_in(
             )
 
     return found
-
-
-def _statement(
-    clause
-):
-
-    """One clause as ``(variables, conditions, consequences)`` for the narration."""
-
-    return {
-        "variables": variables_of(
-            clause
-        ),
-        "conditions": [
-            _render(literal)
-            for literal
-            in clause
-            if literal.negated
-        ],
-        "consequences": [
-            _render(literal)
-            for literal
-            in clause
-            if not literal.negated
-        ],
-    }
-
-
-def _render(literal):
-
-    """The literal as it stands -- the names are already the right ones."""
-
-    return str(
-        Literal(
-            literal.atom,
-            False
-        )
-    )

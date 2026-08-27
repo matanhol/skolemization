@@ -442,6 +442,164 @@ def clause_str(clause):
     )
 
 
+def clause_as_formula(clause):
+
+    """One clause as a formula line: the flat ``∀x ∀y `` prefix, then its reading.
+
+    A clause is a disjunction, but that is not how anyone states the fact it
+    stands for.  The negative literals are the *conditions* and the positive
+    ones the *consequences*, so the reading is an implication where there are
+    both, a denial where there are only conditions, and a plain disjunction
+    where there are only consequences.  The counter-model block wants that
+    reading -- one terse fact per line -- rather than a clause list.
+
+    Only the body is built as a formula tree and handed to the ordinary
+    machinery, so the bracket rules, the ``≠`` spelling and
+    ``config.TALL_BRACKETS`` all still hold inside it, and the result may be
+    several rows for :func:`output.say_block` to print.  The quantifier prefix
+    is *not* part of that tree: written as formulas the variables would nest,
+    ``∀x (∀y (...))``, and a block of facts each buried one bracket deeper than
+    the last is exactly what makes the old prose unreadable.
+
+    The empty clause is □, as in :func:`clause_str` -- though a counter-model
+    never has one to show, since deriving it is what would have refuted the KB.
+    """
+
+    if len(clause) == 0:
+        return "□"
+
+    names = []
+
+    def collect(term):
+
+        """Note this term's variables, in order of first appearance.
+
+        Nested rather than shared: ``counterexample.variables_of`` is already
+        the top-level name for this job, and the notebook flattens every module
+        into one namespace, where a second definition would silently win.
+        """
+
+        if term.is_var:
+
+            name = str(term)
+
+            if name not in names:
+                names.append(name)
+
+            return
+
+        for argument in term.args:
+            collect(argument)
+
+    def chain(
+        connective,
+        atoms
+    ):
+
+        """``atoms`` folded to the left, the nesting the printer draws flat."""
+
+        folded = atoms[0]
+
+        for atom in atoms[1:]:
+
+            folded = connective(
+                folded,
+                atom
+            )
+
+        return folded
+
+    for literal in clause:
+
+        for argument in literal.atom.args:
+            collect(argument)
+
+    conditions = [
+        literal.atom
+        for literal in clause
+        if literal.negated
+    ]
+
+    consequences = [
+        literal.atom
+        for literal in clause
+        if not literal.negated
+    ]
+
+    if not conditions:
+
+        body = chain(
+            Or,
+            consequences
+        )
+
+    elif not consequences:
+
+        body = Not(
+            chain(
+                And,
+                conditions
+            )
+        )
+
+    else:
+
+        body = Implies(
+            chain(
+                And,
+                conditions
+            ),
+            chain(
+                Or,
+                consequences
+            )
+        )
+
+    # Only a binary connective needs closing off after the prefix: ¬(...)
+    # already brackets whatever it denies, and an atom cannot be misread.
+
+    if type(body) in BINARY_CONNECTIVES:
+
+        pieces = bracketed(
+            formula_pieces(
+                body,
+                1
+            ),
+            0
+        )
+
+    else:
+
+        pieces = formula_pieces(
+            body,
+            0
+        )
+
+    prefix = "".join(
+        f"∀{name} "
+        for name in names
+    )
+
+    if prefix:
+
+        pieces = (
+            [(prefix, None)]
+            + pieces
+        )
+
+    if not config.TALL_BRACKETS:
+
+        return "".join(
+            text
+            for text, _
+            in pieces
+        )
+
+    return stacked(
+        pieces
+    )
+
+
 def show_formulas(
     formulas,
     title="KB"

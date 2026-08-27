@@ -2010,8 +2010,15 @@ def countermodel(
 
     What a reader cannot get from the question is what gets said: which
     predicates never hold, everything known about each witness, and whatever
-    the search added on top.  The universes are not explained -- the symbols
-    carry them, ``a1`` against ``b1``, ``x`` against ``y``.
+    the search added on top.  The universes are not explained -- the witness
+    names carry them, ``c`` against ``d``, because skolemization already chose
+    them that way.
+
+    Every fact arrives as a *rendered formula line*: ``description`` is
+    ``{"never": [line, ...], "always": [...], "groups": [([names], [line, ...]),
+    ...], "added": [...]}``, in the order it is to be printed.  Nothing is
+    assembled into a sentence here -- a formula reads better than prose about
+    it, and this module only decides where it sits.
     """
 
     say(
@@ -2039,22 +2046,22 @@ def countermodel(
         phrase("countermodel_intro_3")
     )
 
-    for key, predicates in (
+    for key, lines in (
         ("countermodel_never", description["never"]),
         ("countermodel_always", description["always"])
     ):
 
-        if not predicates:
+        if not lines:
             continue
 
+        # The blank line before the section is inside the phrase, the way
+        # ``countermodel_added`` and the witnesses header carry theirs.
         say(
-            "\n"
-            + phrase(
-                key,
-                predicates=ltr(
-                    ", ".join(predicates)
-                )
-            )
+            phrase(key)
+        )
+
+        _say_facts(
+            lines
         )
 
     if universes:
@@ -2074,22 +2081,17 @@ def countermodel(
 
     for names, facts in description["groups"]:
 
+        # The names *are* the heading -- there is no word to put around them, and
+        # a line of Latin names is left alone by ``say``, so it needs no isolate.
         say(
             "\n"
-            + phrase(
-                "countermodel_about",
-                witnesses=ltr(
-                    ", ".join(names)
-                )
-            )
+            + ", ".join(names)
+            + ":"
         )
 
-        for statement in facts:
-
-            _say_statement(
-                statement,
-                "        "
-            )
+        _say_facts(
+            facts
+        )
 
     if description["added"]:
 
@@ -2097,12 +2099,9 @@ def countermodel(
             phrase("countermodel_added")
         )
 
-        for statement in description["added"]:
-
-            _say_statement(
-                statement,
-                "    "
-            )
+        _say_facts(
+            description["added"]
+        )
 
     say(
         phrase("countermodel_check")
@@ -2147,98 +2146,25 @@ def countermodel(
         )
 
 
-def _say_statement(
-    statement,
-    indent
+def _say_facts(
+    lines
 ):
 
-    """One fact about the model, on one line where it fits.
+    """The facts under a heading, one rendered formula per entry.
 
-    A clause with variables keeps them -- ``for every y: B(a1, y)`` -- and the
-    letter is what says which universe ``y`` runs over.
+    Each line arrives already written out as a formula, so there is nothing to
+    phrase -- but ``TALL_BRACKETS`` can make one of them several rows tall, and
+    an LTR isolate must not span a newline.  ``say_block`` is what marks each
+    row on its own; the indent doubles as the label so a one-row line stays put.
     """
 
-    parts = []
+    for line in lines:
 
-    if statement["variables"]:
-
-        parts.append(
-            phrase(
-                "countermodel_for_every",
-                variables=ltr(
-                    ", ".join(
-                        statement["variables"]
-                    )
-                )
-            )
+        say_block(
+            "    ",
+            line,
+            indent="    "
         )
-
-    conditions = statement[
-        "conditions"
-    ]
-
-    consequences = statement[
-        "consequences"
-    ]
-
-    # A fact about named elements is stated, not quantified: "not D(a1)", never
-    # "never D(a1)", which reads as a rule about something that recurs.
-    if not statement["variables"] and len(conditions) + len(consequences) == 1:
-
-        say(
-            indent
-            + phrase(
-                "countermodel_fact_not"
-                if conditions
-                else "countermodel_fact_holds",
-                fact=ltr(
-                    (conditions + consequences)[0]
-                )
-            )
-        )
-
-        return
-
-    if conditions and consequences:
-
-        parts.append(
-            phrase(
-                "countermodel_if_then",
-                conditions=ltr(
-                    " ∧ ".join(conditions)
-                ),
-                consequences=ltr(
-                    " ∨ ".join(consequences)
-                )
-            )
-        )
-
-    elif conditions:
-
-        parts.append(
-            phrase(
-                "countermodel_not",
-                conditions=ltr(
-                    " ∧ ".join(conditions)
-                )
-            )
-        )
-
-    else:
-
-        parts.append(
-            phrase(
-                "countermodel_holds",
-                consequences=ltr(
-                    " ∨ ".join(consequences)
-                )
-            )
-        )
-
-    say(
-        indent
-        + "  ".join(parts)
-    )
 
 
 def _say_reason(

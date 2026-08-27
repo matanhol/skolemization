@@ -51,15 +51,30 @@ EXPLAIN_CHOICE = False
 
 EXPLAIN_SATURATION = True
 
-# Experimental.  When a search saturates, work backwards from it: take the
-# clauses that came from the negated conclusion, let the units the search found
-# simplify them, and undo the pipeline -- steps 7 to 1, skipping step 4, so the
-# Skolem witnesses stay.  What comes out is the shape any counter-model has to
-# have (counterexample.py).
+# Experimental.  Refutation completeness has a second half: a clause set
+# saturated under a complete calculus with no □ in it *is* satisfiable.  So the
+# clauses a dry search leaves behind are not an obstacle to a counter-model --
+# they are the description of one, and this pass says it in the problem's own
+# vocabulary (counterexample.py): the witnesses, grouped by universe, and then
+# the facts about them, written as formulas rather than prose -- ¬D(c1),
+# ∀y ¬F(c1, y).  Every assumption and the conclusion is evaluated there and
+# explained: true of every element, vacuously true, witnessed by a named
+# element, or an implication whose left-hand side fails.  The assumptions must
+# come out true and the conclusion false, and a verdict that comes out the
+# other way is flagged rather than smoothed over -- it would mean the model,
+# the saturation or the evaluator is broken.
 #
-# Off, and it refuses to run where saturation certifies nothing: after UNKNOWN,
-# on a witness-focused KB, or under SET_OF_SUPPORT.  Those refusals are printed
-# rather than silent.
+# Underneath is a finite model that is never printed: domains of one, two,
+# three elements, every interpretation of the constants and Skolem functions,
+# and a plain DPLL over the ground instances -- preferring separate witnesses
+# and no function sending an element to itself, since g1(e1) = e1 reads as "the
+# owner of x is x".  It is what makes the description satisfiable rather than
+# merely plausible, and what an explanation points at when it names a witness.
+#
+# On, but it stays away from the two searches whose running dry certifies
+# nothing: a witness-focused KB, whose substitution is a guess, and a run under
+# SET_OF_SUPPORT, which never tried the inferences among the assumptions and
+# is turned away out loud rather than silently.
 
 EXPLAIN_COUNTEREXAMPLE = True
 

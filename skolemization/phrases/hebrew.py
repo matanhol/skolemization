@@ -715,10 +715,12 @@ factoring של C{index}: """,
 ה-clauses מכריחים פונקציה לשלוח איבר לעצמו -- אין ברירה.""",
 
     "countermodel_never":
-    "לא מתקיים אף פעם: {predicates}",
+    """
+לא מתקיים אף פעם:""",
 
     "countermodel_always":
-    "מתקיים תמיד: {predicates}",
+    """
+מתקיים תמיד:""",
 
     "countermodel_witnesses_header":
     """
@@ -727,27 +729,6 @@ factoring של C{index}: """,
     "countermodel_added":
     """
 מה שהחיפוש הוסיף:""",
-
-    "countermodel_for_every":
-    "לכל {variables}:",
-
-    "countermodel_if_then":
-    "אם {conditions} אז {consequences}",
-
-    "countermodel_not":
-    "לא מתקיים {conditions}",
-
-    "countermodel_holds":
-    "מתקיים {consequences}",
-
-    "countermodel_fact_holds":
-    "{fact}",
-
-    "countermodel_fact_not":
-    "לא {fact}",
-
-    "countermodel_about":
-    "על {witnesses}:",
 
 }
 

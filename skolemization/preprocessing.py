@@ -46,9 +46,14 @@ class Preprocessed:
     # The parsed input, kept for anything that has to talk about the question
     # rather than about the clauses -- counterexample.py evaluates these in the
     # model it builds, which is how a counter-model is checked rather than
-    # asserted.
+    # asserted.  ``predicate_order`` is the same input read a different way:
+    # the predicates in the order the reader first met them, which is one of
+    # the keys the counter-model prints its facts by.  The signature check has
+    # already walked every formula left to right, so it comes for free here and
+    # would cost a second walk anywhere else.
     assumption_formulas: tuple = ()
     conclusion_formula: object = None
+    predicate_order: tuple = ()
 
     @property
     def witness(self):
@@ -132,7 +137,8 @@ def preprocess(
             axiom_clauses,
             conclusion_clauses,
             tuple(formulas[:-1]),
-            formulas[-1].x
+            formulas[-1].x,
+            signature.predicates
         )
 
     no_implications = (
@@ -201,7 +207,8 @@ def preprocess(
         axiom_clauses,
         conclusion_clauses,
         tuple(formulas[:-1]),
-        formulas[-1].x
+        formulas[-1].x,
+        signature.predicates
     )
 
 

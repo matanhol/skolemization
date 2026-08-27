@@ -116,7 +116,7 @@ Each directory is one problem; each script inside it is one conclusion, with its
 | `examples/question8/` | programmers, logic and bonuses |
 | `examples/teacher/` | the lecturer's own question, run with nothing overridden |
 | `examples/ceo/` | exactly one applicant succeeded, at least two applied ⇒ someone applied and failed |
-| `examples/uniqueness/` | the same uniqueness question five ways: with equality axioms, without them, with paramodulation, with superposition |
+| `examples/uniqueness/` | the same uniqueness question five ways: with equality axioms, without them, with the arguments written in matching order, with paramodulation, with superposition |
 | `examples/equality/` | a burglary, in four formulations — the cost of doing equality by axioms versus by rule (343 steps against 9) |
 | `examples/recursion/` | one question, two rankings: one runs away into nested Skolem terms, the other proves it in six steps |
 | `examples/equivalence/` | two formulas, both directions, and the ≡ verdict |
@@ -136,7 +136,7 @@ still match what each docstring claims.
 | `SET_OF_SUPPORT` | allow only inferences that touch the negated conclusion |
 | `TALL_BRACKETS` | draw grouping brackets at their real height, as above |
 | `EXPLAIN_CHOICE` | off by default; on, it prints the runners-up after each step and the key that beat them |
-| `EXPLAIN_COUNTEREXAMPLE` | experimental; on, a saturated search is read backwards into the shape a counter-model must have |
+| `EXPLAIN_COUNTEREXAMPLE` | experimental; on, a saturated search describes the counter-model it found — the witnesses, what holds of them, and every assumption checked in it |
 | `LANGUAGE` | `"he"` or `"en"` — the narration's language; the text direction follows from it |
 | `NARRATE` | off makes `prove` a silent library call |
 

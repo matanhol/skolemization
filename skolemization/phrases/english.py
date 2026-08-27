@@ -716,10 +716,12 @@ The clauses force two witnesses onto the same element -- there was no choice."""
 The clauses force a function to send an element to itself -- there was no choice.""",
 
     "countermodel_never":
-    "never holds: {predicates}",
+    """
+never holds:""",
 
     "countermodel_always":
-    "always holds: {predicates}",
+    """
+always holds:""",
 
     "countermodel_witnesses_header":
     """
@@ -728,27 +730,6 @@ The witnesses:""",
     "countermodel_added":
     """
 What the search added:""",
-
-    "countermodel_for_every":
-    "for every {variables}:",
-
-    "countermodel_if_then":
-    "if {conditions} then {consequences}",
-
-    "countermodel_not":
-    "never {conditions}",
-
-    "countermodel_holds":
-    "always {consequences}",
-
-    "countermodel_fact_holds":
-    "{fact}",
-
-    "countermodel_fact_not":
-    "not {fact}",
-
-    "countermodel_about":
-    "about {witnesses}:",
 
 }
 
