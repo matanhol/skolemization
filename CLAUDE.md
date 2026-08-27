@@ -306,16 +306,23 @@ Direction is handled at two levels, and both are needed:
    line that is *nothing but* a formula, the counter-model's fact lines among them: with no
    strong-RTL character on it `say` leaves it LTR already, and an isolate would only add
    invisible bytes to a line that was never going to move.
-**An indent goes at the front, and moving it is a trap.** The argument for moving it is good right
-up to the last step: a terminal writes every line from column 0, so leading spaces inside an RTL
-isolate take the base direction and get reversed to the far side with everything else — therefore
-put them at the logical end instead. The conclusion does not follow. Bidi **rule L1** resets *any
-whitespace at the end of a line* to the **paragraph** embedding level, and a line wrapped in an
-isolate has paragraph level 0 whatever is inside it, since an isolate is opaque and leaves no strong
-character at the top level. A trailing indent is therefore reset to left-to-right and lands back on
-the right. This was tried (`0403079`) and reverted after the author looked at six candidate
-encodings on a real terminal and only the plain one — the indent at the front, inside the isolate —
-stepped correctly. Reason about L2 alone and you will re-derive the same wrong answer.
+**The indent goes outside the isolate, and both ways of putting it inside lose it.** Inside and at
+the front — where a caller naturally writes it — the indent is part of the right-to-left run: it
+takes level 1, rule **L2** reverses it along with the text, and it lands at the visual right where
+nothing shows it. The line comes out flush against column 0 while the formula lines beside it,
+holding no right-to-left character and so left alone by rule 1, keep theirs — a block indented from
+one side only, which is what made the nested counter-model unreadable. Moving it to the logical end
+is the obvious repair and fails to a *different* rule: **L1** resets whitespace at the end of a line
+to the **paragraph** embedding level, and a line wrapped in an isolate has paragraph level 0 whatever
+is inside it, since an isolate is opaque and leaves no strong character at the top level — so the
+spaces are reset to left-to-right and put back on the right. Outside the isolate they are simply the
+line's own layout at paragraph level: L2 never reverses a level-0 run, L1 only touches the end, and
+they stay where they are written.
+
+This was got wrong twice (`0403079`, reverted by `0b82f41`) by reasoning from L2 and forgetting L1.
+What settled it was a screenshot of the failure plus a bidi implementation *with L1 in it*, believed
+only after it reproduced that screenshot: it predicts 0 columns of indent for both broken encodings
+and 8 for this one. **Reason about L2 alone and you will re-derive the same wrong answer twice.**
 
 **The direction follows the language, and is not a separate setting.** Each catalogue declares its
 `DIRECTION`, and `config.RTL_OUTPUT` is `"auto"` by default: Hebrew gets the marks, English would

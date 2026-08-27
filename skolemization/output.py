@@ -31,17 +31,23 @@ Inside a right-to-left line the Latin runs still read left-to-right where they
 stand; that is the Unicode bidi algorithm doing its job once the *paragraph*
 direction is correct.  Only the line-level direction is being set here.
 
-An indent goes at the **front** of the line, where the caller put it, and the
-temptation to move it is a trap worth naming.  The argument for moving it goes:
-a terminal writes every line from column 0, so leading spaces inside an RTL
-isolate take the base direction, get reversed with everything else, and end up
-on the far side -- therefore put them at the logical end instead.  The second
-half does not follow.  Bidi rule L1 resets *any whitespace at the end of a
-line* to the **paragraph** embedding level, and a line wrapped in an isolate has
-paragraph level 0 whatever is inside it, because an isolate is opaque and
-leaves no strong character behind.  So a trailing indent is reset to
-left-to-right and lands back on the right.  Measured on a real terminal, of six
-candidate encodings only the plain one below steps correctly.
+**The indent goes outside the isolate**, and both ways of putting it inside
+lose it.  Inside and at the front, it is part of the right-to-left run: it
+takes level 1, rule L2 reverses it with the text, and it lands at the visual
+right where nothing shows it -- so the line comes out flush against column 0
+while the formula lines beside it, holding no right-to-left character and left
+alone, keep theirs.  Inside and at the *end* -- the obvious repair -- fails
+too, and for a different rule: L1 resets whitespace at the end of a line to the
+**paragraph** level, and a line wrapped in an isolate has paragraph level 0
+whatever is inside it, since an isolate is opaque and leaves no strong
+character at the top level.  The spaces are reset to left-to-right and put back
+on the right.
+
+Outside the isolate they are simply the line's own layout at paragraph level:
+L2 never reverses a level-0 run and L1 only touches the end, so they stay where
+they are written.  This was got wrong twice by reasoning from L2 alone; it is
+now checked with an implementation that has L1 in it, and that implementation
+is only believed because it first reproduces a screenshot of the failure.
 
 Whether the terminal honours any of this is the terminal's business: recent
 Terminal.app and iTerm2 reorder these correctly, while xterm.js-based
@@ -117,17 +123,37 @@ def rtl(text):
     Lines are handled one at a time: an isolate must not span a newline, or
     the terminal is left with an unpopped isolate at the end of a paragraph.
 
-    The indent stays where the caller put it, at the front.  That is not an
-    oversight -- see the module docstring for why moving it to the end is the
-    obvious idea and the wrong one.
+    The indent goes **outside** the isolate, which is the whole of the trick --
+    see the module docstring for the two ways of putting it inside that both
+    lose it.
     """
 
     return "\n".join(
-        RLI + line + PDI
+        _isolated(line)
         if line_is_rtl(line)
         else line
         for line
         in text.split("\n")
+    )
+
+
+def _isolated(line):
+    """One right-to-left line, isolated, with its indent left outside.
+
+    The indent is not right-to-left text -- it is the line's own layout -- so
+    it stays at paragraph level, in front of the isolate, where it is written
+    and where it renders.
+    """
+
+    body = line.lstrip(
+        " "
+    )
+
+    return (
+        " " * (len(line) - len(body))
+        + RLI
+        + body
+        + PDI
     )
 
 
