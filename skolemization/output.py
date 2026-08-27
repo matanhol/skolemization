@@ -31,14 +31,17 @@ Inside a right-to-left line the Latin runs still read left-to-right where they
 stand; that is the Unicode bidi algorithm doing its job once the *paragraph*
 direction is correct.  Only the line-level direction is being set here.
 
-The second half of that rule is about the indent, and it is not optional.  A
-terminal writes every line from column 0, so a right-to-left line whose spaces
-are written first has them reversed to the far end and its text pushed flush
-against the margin -- the indent spent where nobody can see it, while the
-formula lines beside it, holding no right-to-left character and so left to
-themselves, keep theirs on the left.  So an RTL line is emitted with its
-indent at the logical end, which is where the same reversal puts it on the
-visual left.  See :func:`rtl`.
+An indent goes at the **front** of the line, where the caller put it, and the
+temptation to move it is a trap worth naming.  The argument for moving it goes:
+a terminal writes every line from column 0, so leading spaces inside an RTL
+isolate take the base direction, get reversed with everything else, and end up
+on the far side -- therefore put them at the logical end instead.  The second
+half does not follow.  Bidi rule L1 resets *any whitespace at the end of a
+line* to the **paragraph** embedding level, and a line wrapped in an isolate has
+paragraph level 0 whatever is inside it, because an isolate is opaque and
+leaves no strong character behind.  So a trailing indent is reset to
+left-to-right and lands back on the right.  Measured on a real terminal, of six
+candidate encodings only the plain one below steps correctly.
 
 Whether the terminal honours any of this is the terminal's business: recent
 Terminal.app and iTerm2 reorder these correctly, while xterm.js-based
@@ -109,54 +112,22 @@ def marks_wanted():
 
 
 def rtl(text):
-    """Wrap each right-to-left line of ``text`` in an RTL isolate, indent last.
+    """Wrap each right-to-left line of ``text`` in an RTL isolate.
 
     Lines are handled one at a time: an isolate must not span a newline, or
     the terminal is left with an unpopped isolate at the end of a paragraph.
 
-    The indent has to move.  Written where a caller puts it -- at the front --
-    it is a run of neutrals at the *start* of a right-to-left line, so it takes
-    the base direction and rule L2 reverses it along with everything else: the
-    spaces come out at the far end and the text sits flush against column 0,
-    because a terminal writes from column 0 whatever the direction is.  The
-    indent is spent off the edge of the line and the nesting it was expressing
-    disappears -- while a line holding only a formula, having no strongly
-    right-to-left character in it, keeps its indent on the left.  A block of
-    the two together is indented from both sides at once.
-
-    Which lines those are is :func:`line_is_rtl`'s answer and nothing else's,
-    so this holds for every right-to-left script rather than for Hebrew: the
-    same reordering happens to an Arabic or an Adlam line, and the same repair
-    fixes it.
-
-    So a right-to-left line carries its indent at the logical *end*, where the
-    same reversal puts it on the visual left, next to where the formula lines
-    put theirs.  Measured with rule L2 over the classes ``unicodedata`` gives:
-    four leading spaces render as four trailing ones, and four trailing spaces
-    render as four leading ones.
+    The indent stays where the caller put it, at the front.  That is not an
+    oversight -- see the module docstring for why moving it to the end is the
+    obvious idea and the wrong one.
     """
 
     return "\n".join(
-        _indent_last(line)
+        RLI + line + PDI
         if line_is_rtl(line)
         else line
         for line
         in text.split("\n")
-    )
-
-
-def _indent_last(line):
-    """One right-to-left line, isolated, with its indent moved to the end."""
-
-    body = line.lstrip(
-        " "
-    )
-
-    return (
-        RLI
-        + body
-        + " " * (len(line) - len(body))
-        + PDI
     )
 
 
