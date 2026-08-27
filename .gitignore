@@ -8,3 +8,8 @@ __pycache__/
 # 60-cell JSON diff per edit.
 skolemization.ipynb
 skolemization.*.ipynb
+
+# The author's screenshots of how the terminal actually renders Hebrew --
+# working material, and megabytes of it.  hebrew_indentation.py is the part
+# worth keeping, and it is tracked.
+*.png
