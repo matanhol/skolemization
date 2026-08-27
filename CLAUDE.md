@@ -286,12 +286,17 @@ namespace class of its own (`hebrew.PHRASES` and `english.PHRASES` do not collid
 skips their bodies, so a function defined in one exists in the package and vanishes from the
 notebook — which is exactly how `phrases/lookup.py` came to be a module of its own.
 
-Direction is handled at two levels, and both are needed:
+Direction is handled at three levels, and all three are needed:
 
-1. `say` forces RTL base direction on any line containing a Hebrew character — including lines
-   mixing Hebrew with Latin identifiers, which is most of them
-   (`מוסיפים את ה-resolvent ל-KB:`). Lines with no Hebrew pass through untouched, LTR.
-2. **`ltr()` wraps any formula, clause or term before it goes into a Hebrew line.** Without it
+1. `say` forces RTL base direction on any line containing a **right-to-left** character —
+   including lines mixing it with Latin identifiers, which is most of them
+   (`מוסיפים את ה-resolvent ל-KB:`). Lines with none pass through untouched, LTR. The condition
+   is the character's direction and never its script: `line_is_rtl` asks
+   `unicodedata.bidirectional` for the strong classes `R`/`AL`, so Arabic, Syriac, Thaana, N'Ko
+   and Adlam are carried by the same rule that carries Hebrew, and rules 2 and 3 below inherit
+   that reach for free. The samples here are Hebrew because Hebrew is the right-to-left language
+   this package ships, not because the rule knows about it.
+2. **`ltr()` wraps any formula, clause or term before it goes into a right-to-left line.** Without it
    the expression scrambles, because `∀ ∃ ¬ ∧ ∨ →` and the parentheses are bidi class ON
    (Other Neutral), *not* `L` — only the Latin letters hold their direction. The neutrals
    inherit the RTL paragraph direction and move to the wrong side, and `(`, `)` and `∃` are
@@ -301,6 +306,27 @@ Direction is handled at two levels, and both are needed:
    line that is *nothing but* a formula, the counter-model's fact lines among them: with no
    strong-RTL character on it `say` leaves it LTR already, and an isolate would only add
    invisible bytes to a line that was never going to move.
+3. **An indented right-to-left line carries its indent at the logical end** (`output.rtl`, through
+   `output._indent_last`). A terminal writes every line from column 0 whatever the direction, so an
+   indent left where the caller put it — at the front — is a run of neutrals at the *start* of an
+   RTL line: it takes the base direction, bidi rule L2 reverses it along with everything else, and
+   the spaces come out at the far end with the text flush against the margin. The indent is spent
+   where nobody can see it. Meanwhile a line holding only a formula has no strong-RTL character at
+   all, so by rule 1 `say` leaves it alone and its indent stays on the left as written — and a block
+   mixing the two is indented from *both sides at once*, which is what the deeply nested
+   counter-model block finally made obvious. So an RTL line is emitted as `RLI + body + indent +
+   PDI`, which is where the same reversal lands the indent on the visual left, beside where the
+   formula lines put theirs. No caller changed: `say`, `say_block` and every narration function
+   still pass `indent + text`, and the move happens once, at the gateway.
+
+   This one is measured against the algorithm rather than against a screen, because the terminals
+   disagree about honouring the marks at all: a throwaway implementation of rule L2 over the
+   classes `unicodedata.bidirectional` reports, for an isolated `מתקיימת במודל.` under a four-space
+   indent, **0 spaces at the visual left and 4 at the right**, and for the same line with the indent
+   moved to the end, **4 at the left and 0 at the right**. A line mixing Hebrew with an
+   LTR-isolated `c1` moves its 8 spaces from right to left the same way, and so do the Arabic,
+   Syriac, Thaana, N'Ko and Adlam lines the same check runs over — the repair reaches exactly as
+   far as rule 1 does.
 
 **The direction follows the language, and is not a separate setting.** Each catalogue declares its
 `DIRECTION`, and `config.RTL_OUTPUT` is `"auto"` by default: Hebrew gets the marks, English would
@@ -310,7 +336,8 @@ dependencies), which is why the language states its own; `output.line_is_rtl` as
 `unicodedata.bidirectional` for the strong classes `R`/`AL` rather than matching a Hebrew block, so
 Arabic, Syriac, Thaana, N'Ko and Adlam are laid out rather than scrambled.
 
-`config.RTL_OUTPUT = False` makes both a no-op and `say` a byte-for-byte `print`;
+`config.RTL_OUTPUT = False` makes all three no-ops and `say` a byte-for-byte `print` — an
+English transcript takes the same path, so nothing invisible is added and no indent is moved;
 `config.NARRATE = False` silences it entirely, so `prove` can be used as a library call. That
 byte-comparison no longer matches `skolemization_example.py` on formula lines — the frozen
 original brackets every binary node and prints one line per formula, and this one does neither

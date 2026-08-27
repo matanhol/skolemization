@@ -1,18 +1,25 @@
 """The single gateway for everything this package prints.
 
-The narration mixes Hebrew with Latin identifiers -- ``KB``, ``resolvent``,
-``Resolution``, the predicate names -- and a terminal decides a line's base
-direction from its first strong character.  So a line that happens to start
-with a Latin word gets laid out left-to-right and its Hebrew ends up hanging
-off the wrong edge, punctuation and all.
+The narration mixes a right-to-left language with Latin identifiers -- ``KB``,
+``resolvent``, ``Resolution``, the predicate names -- and a terminal decides a
+line's base direction from its first strong character.  So a line that happens
+to start with a Latin word gets laid out left-to-right and its Hebrew ends up
+hanging off the wrong edge, punctuation and all.
 
 ``say`` fixes that per line, by one rule:
 
-    any Hebrew character on the line  ->  the whole line is RTL
-    no Hebrew at all                  ->  the line is left untouched
+    any right-to-left character on the line  ->  the whole line is RTL
+    none at all                              ->  the line is left untouched
 
-"Any" is meant literally.  It does not matter how much Latin sits next to the
-Hebrew or which script comes first::
+The condition is the character's *direction*, never its script: ``line_is_rtl``
+asks :mod:`unicodedata` for the strong classes below, so Arabic, Syriac,
+Thaana, N'Ko and Adlam are covered by the same rule that covers Hebrew, and a
+second right-to-left catalogue would need nothing added here.  Hebrew is what
+the samples are written in because it is the right-to-left language this
+package ships.
+
+"Any" is meant literally.  It does not matter how much Latin sits next to it or
+which script comes first::
 
     בוחרים:                          ->  RTL
     מוסיפים את ה-resolvent ל-KB:     ->  RTL
@@ -23,6 +30,15 @@ Hebrew or which script comes first::
 Inside a right-to-left line the Latin runs still read left-to-right where they
 stand; that is the Unicode bidi algorithm doing its job once the *paragraph*
 direction is correct.  Only the line-level direction is being set here.
+
+The second half of that rule is about the indent, and it is not optional.  A
+terminal writes every line from column 0, so a right-to-left line whose spaces
+are written first has them reversed to the far end and its text pushed flush
+against the margin -- the indent spent where nobody can see it, while the
+formula lines beside it, holding no right-to-left character and so left to
+themselves, keep theirs on the left.  So an RTL line is emitted with its
+indent at the logical end, which is where the same reversal puts it on the
+visual left.  See :func:`rtl`.
 
 Whether the terminal honours any of this is the terminal's business: recent
 Terminal.app and iTerm2 reorder these correctly, while xterm.js-based
@@ -93,18 +109,54 @@ def marks_wanted():
 
 
 def rtl(text):
-    """Wrap each right-to-left line of ``text`` in an RTL isolate.
+    """Wrap each right-to-left line of ``text`` in an RTL isolate, indent last.
 
     Lines are handled one at a time: an isolate must not span a newline, or
     the terminal is left with an unpopped isolate at the end of a paragraph.
+
+    The indent has to move.  Written where a caller puts it -- at the front --
+    it is a run of neutrals at the *start* of a right-to-left line, so it takes
+    the base direction and rule L2 reverses it along with everything else: the
+    spaces come out at the far end and the text sits flush against column 0,
+    because a terminal writes from column 0 whatever the direction is.  The
+    indent is spent off the edge of the line and the nesting it was expressing
+    disappears -- while a line holding only a formula, having no strongly
+    right-to-left character in it, keeps its indent on the left.  A block of
+    the two together is indented from both sides at once.
+
+    Which lines those are is :func:`line_is_rtl`'s answer and nothing else's,
+    so this holds for every right-to-left script rather than for Hebrew: the
+    same reordering happens to an Arabic or an Adlam line, and the same repair
+    fixes it.
+
+    So a right-to-left line carries its indent at the logical *end*, where the
+    same reversal puts it on the visual left, next to where the formula lines
+    put theirs.  Measured with rule L2 over the classes ``unicodedata`` gives:
+    four leading spaces render as four trailing ones, and four trailing spaces
+    render as four leading ones.
     """
 
     return "\n".join(
-        RLI + line + PDI
+        _indent_last(line)
         if line_is_rtl(line)
         else line
         for line
         in text.split("\n")
+    )
+
+
+def _indent_last(line):
+    """One right-to-left line, isolated, with its indent moved to the end."""
+
+    body = line.lstrip(
+        " "
+    )
+
+    return (
+        RLI
+        + body
+        + " " * (len(line) - len(body))
+        + PDI
     )
 
 
