@@ -9,7 +9,9 @@ __pycache__/
 skolemization.ipynb
 skolemization.*.ipynb
 
-# The author's screenshots of how the terminal actually renders Hebrew --
-# working material, and megabytes of it.  hebrew_indentation.py is the part
-# worth keeping, and it is tracked.
+# Working material from settling the right-to-left layout: screenshots of how
+# the terminal actually renders Hebrew, and the scratch scripts that pinned
+# the arithmetic down.  What was learned from them is in CLAUDE.md, which is
+# the part worth keeping; the files themselves are not the model.
 *.png
+hebrew_*.py
