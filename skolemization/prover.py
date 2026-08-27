@@ -1,4 +1,24 @@
-"""The public entry point."""
+"""The public entry point, and the phases a proof runs through.
+
+``prove`` is the whole program in one call.  It turns any declared relation
+properties into extra assumptions (axioms.py), narrates the seven steps that
+carry the question down to clauses (preprocessing.py), optionally tries the
+search once with every variable pinned to the Skolem witness (focus.py), and
+then saturates (search.py) until the empty clause or until nothing new can be
+derived.
+
+A search that runs dry does not end the story.  Refutation completeness has a
+second half -- a clause set saturated under a complete calculus with no empty
+clause in it *is* satisfiable -- so ``_build_countermodel`` reads a model out
+of the survivors (counterexample.py) and checks the original question in it:
+the assumptions must come out true and the conclusion false, which is what
+makes it a counter-example rather than a picture of one.  That phase is gated
+on ``config.EXPLAIN_COUNTEREXAMPLE``, and it refuses under ``SET_OF_SUPPORT``,
+whose running dry certifies nothing.
+
+Nothing here prints.  Every phase announces itself through narration.py, which
+is also why the order of the calls below is the order of the transcript.
+"""
 
 from . import config
 from . import narration

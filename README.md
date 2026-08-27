@@ -86,6 +86,98 @@ Then `search.py` saturates: resolution, factoring, and — when the problem uses
 paramodulation, which replaces the entire family of equality axioms with one inference rule that
 rewrites equals for equals inside terms.
 
+## The counter-model
+
+A search that runs dry rather than reaching □ has proved something after all. Refutation
+completeness has a second half: a clause set saturated under a complete calculus with no empty
+clause in it **is** satisfiable — so the surviving clauses are not what stands between the reader
+and a counter-model, they are the description of one. `counterexample.py` reads it off and states
+it: the witnesses, what is known about each of them, which predicates never or always hold, and
+then every assumption and the conclusion evaluated in that model. This is `some_dog_exists` — the
+conclusion "there is a dog", which does not follow.
+
+```
+======================================================================
+מודל נגדי
+======================================================================
+
+החיפוש רווה בלי סתירה, ולכן קבוצת ה-clauses ספיקה -- ויש בה מודל.
+הנה מודל שמקיים את כל ה-clauses שנשארו, ולכן גם את ההנחות
+ואת שלילת המסקנה. זהו מודל נגדי לטענה.
+
+לא מתקיים אף פעם:
+    ∀x ¬D(x)
+
+העדים:
+    c
+
+c:
+    ∀y ¬F(c, y)
+    ∀y B(c, y)
+
+בדיקה של המודל מול השאלה המקורית:
+
+                                        הנחה 1: ←
+           ∀x (D(x) → (∃y (O(x, y) ∧ F(x, y))))
+                       ✓ מתקיימת במודל.
+
+ריקנית: אין במודל איבר שמקיים את התנאי:
+                                   D(x)
+
+
+                                        הנחה 2: ←
+                   ∀x (∀y (F(x, y) → ¬B(x, y)))
+                       ✓ מתקיימת במודל.
+
+ריקנית: אין במודל איבר שמקיים את התנאי:
+                                F(x, y)
+
+
+                                        הנחה 3: ←
+                              ∃x (∀y (B(x, y)))
+                       ✓ מתקיימת במודל.
+
+                             העד הוא c: ←
+            מתקיים עבור כל איברי התחום.
+
+
+                                         מסקנה: ←
+                                      ∃x (D(x))
+                  ✗ אינה מתקיימת במודל.
+
+            אין במודל איבר שמקיים אותו.
+
+ההנחות מתקיימות והמסקנה לא, ולכן המסקנה אינה נובעת מהן.
+```
+
+The block is anchored to the right, because that is where a Hebrew reader starts a line: depth steps
+inward from that edge, and `←` marks a block opening.
+
+The witnesses are grouped by universe and named for it. The sorts are inferred before
+skolemization, so one witness in a universe gets the bare letter `c`, several get `c1, c2`, and a
+second universe gets `d` — which is why the grouping needs no explaining. Everything known about
+them is said as a formula rather than handed over as a clause, and the facts are ordered: by arity,
+so what is known about single things comes first; then by whether a fact names a witness or carries
+a `∀`, since the concrete is what a reader anchors on; then by the order the problem first writes
+the predicate in, so the block reads in the vocabulary of the question.
+
+The check is the point. The assumptions have to come out true in the model and the conclusion
+false — that is what makes it a counter-example rather than a picture of one, and it is checked
+rather than asserted, with a verdict that lands the wrong way round printed under a ⚠️ instead of
+smoothed over, since it would mean the model, the saturation or the evaluator is broken. Every
+verdict carries the reason it came out that way: true of every element, vacuously true, witnessed by
+a named element, or one of the three verdicts an implication can have. The reasons nest — an
+implication says which of its sides decided it, and a named element says why *that* element
+qualifies, with the body shown instantiated at it (`P(c3)`, not `P(x)`).
+
+Underneath all of it is a finite structure — a domain, a table per predicate, tables for the
+constants and the Skolem functions — found by plain DPLL over the ground instances at domain sizes
+1, 2, 3 up to a cap, and never printed. It is the proof that the description is satisfiable rather
+than merely plausible, and what the explanations point at when they name a witness.
+
+Under `SET_OF_SUPPORT` the pass refuses, out loud: that search never tried the inferences among the
+assumptions, so its running dry certifies nothing about satisfiability.
+
 ## As a library
 
 ```python
@@ -112,14 +204,14 @@ Each directory is one problem; each script inside it is one conclusion, with its
 
 | | |
 | --- | --- |
-| `examples/dogs/` | the running example: dogs, owners, loyalty and betrayal — seven scripts over one set of assumptions, four of whose conclusions do not follow |
+| `examples/dogs/` | the running example: dogs, owners, loyalty and betrayal — seven scripts over one set of assumptions, four of whose conclusions do not follow and end in a counter-model instead |
 | `examples/question8/` | programmers, logic and bonuses |
 | `examples/teacher/` | the lecturer's own question, run with nothing overridden |
 | `examples/ceo/` | exactly one applicant succeeded, at least two applied ⇒ someone applied and failed |
 | `examples/uniqueness/` | the same uniqueness question five ways: with equality axioms, without them, with the arguments written in matching order, with paramodulation, with superposition |
 | `examples/equality/` | a burglary, in four formulations — the cost of doing equality by axioms versus by rule (343 steps against 9) |
 | `examples/recursion/` | one question, two rankings: one runs away into nested Skolem terms, the other proves it in six steps |
-| `examples/equivalence/` | two formulas, both directions, and the ≡ verdict |
+| `examples/equivalence/` | two formulas, both directions, and the ≡ verdict — φ1 ⊨ φ2 fails, with a counter-model to show for it |
 
 They are also the regression suite: after changing solver logic, run them and check the statuses
 still match what each docstring claims.
@@ -136,7 +228,7 @@ still match what each docstring claims.
 | `SET_OF_SUPPORT` | allow only inferences that touch the negated conclusion |
 | `TALL_BRACKETS` | draw grouping brackets at their real height, as above |
 | `EXPLAIN_CHOICE` | off by default; on, it prints the runners-up after each step and the key that beat them |
-| `EXPLAIN_COUNTEREXAMPLE` | experimental; on, a saturated search describes the counter-model it found — the witnesses, what holds of them, and every assumption checked in it |
+| `EXPLAIN_COUNTEREXAMPLE` | on by default, experimental; a saturated search reads a counter-model off its own clauses — see *The counter-model* |
 | `LANGUAGE` | `"he"` or `"en"` — the narration's language; the text direction follows from it |
 | `NARRATE` | off makes `prove` a silent library call |
 

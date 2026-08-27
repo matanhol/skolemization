@@ -19,7 +19,11 @@ Output goes through ``say`` (output.py), which sets the direction the language
 is written in and honours ``config.NARRATE``.
 
 Sections below follow the pipeline: prover -> preprocess -> search ->
-subsumption -> focus.
+subsumption -> focus -> counter-model.  That last one is the largest single
+block this module lays out, and the only one it cannot print as it goes: a
+right-to-left block is anchored on its right edge, so the whole of it has to be
+collected before the first line can be placed (see ``countermodel`` and
+``output.say_nested``).
 """
 
 from . import config

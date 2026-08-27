@@ -202,11 +202,27 @@ prove()                     prover.py
   run_resolution_search()   search.py               saturation until the empty clause
     paramodulants()         paramodulation.py       equality as a rule, not axioms
     explain_saturated_kb()  saturation.py           why a saturated KB is finished
+  _build_countermodel()     prover.py               only when the search ran dry
+    finite_model()          counterexample.py       DPLL over the ground instances
+    sorts_of_clauses()      sorts.py                the universes, over the clauses as they entered
+    why()                   counterexample.py       every assumption and the conclusion, checked
+    witnesses_by_universe() counterexample.py       which witness stands for what kind of thing
+    describe()              counterexample.py       the model in the problem's own vocabulary
 ```
 
 `steps/` holds only transforms — they compute and print nothing; `preprocessing.py` does the
 announcing. Steps 0 and 1 sit outside the folder because they are not transforms, which
 `steps/__init__.py` explains so the numbering does not look like it has holes.
+
+**The counter-model pass carries no step number because it is not one of the steps.** Steps 0–7
+prepare the clauses the search runs on; `_build_countermodel` runs at the other end, reading a model
+back out of what the search left behind, which is why it sits at the foot of the map rather than in
+the sequence. It is reached only when `run_resolution_search` returned
+`SATURATED_NO_CONTRADICTION` and `config.EXPLAIN_COUNTEREXAMPLE` is on — a refutation has no model
+to describe, and a run that hit `MAX_RESOLUTION_STEPS` has not finished looking for one. `prove`
+calls it before printing the final status, so the description arrives while the KB it is about is
+still the last thing the reader saw. What it prints, and the two refusals it makes, are the subject
+of the counter-model section further down.
 
 **`preprocess` drives those steps in either of two orders**, and they produce the same clause
 list, in the same order, with the same Skolem names — only the narration differs. The default is
@@ -223,8 +239,9 @@ optional `rewrites` list and appends a `Rewrite(rule, before, after)` per rule i
 the *local* rewrite with un-recursed children — what the rule did at that node, which is what a
 reader would write on paper — not the fully-processed subtree. `to_nnf` carries negation in a
 `negated` flag rather than rewriting `Not` nodes, so it records at the point the flag is
-*consumed*: a negated `And` becoming an `Or` is the De Morgan step. Rule names get their Hebrew
-in `narration.RULE_NAMES`.
+*consumed*: a negated `And` becoming an `Or` is the De Morgan step. Rule names are words like any
+others, so they live in the catalogues: `narration.py` reaches them with
+`phrase_table("rule_names")`, keyed by the `rewrite` constant the record carries.
 
 Each step then closes by showing the whole KB (`display.show_formulas`, the formula-side
 counterpart of `show_kb`), and says nothing at all about formulas it left unchanged.
@@ -232,8 +249,14 @@ counterpart of `show_kb`), and says nothing at all about formulas it left unchan
 Supporting modules: `formulas.py` (the data model), `display.py`, `substitution.py`,
 `unification.py`, `clauses.py` (variable renaming, canonical keys, tautologies),
 `resolution.py` (one resolution step), `paramodulation.py` and `ordering.py` (equality as a
-rule), `subsumption.py` (three sweeps — see below), `saturation.py`, `config.py`, `narration.py`,
-`output.py`, and the `parsing/` subpackage (`aliases.py` → `tokenizer.py` → `parser.py`).
+rule), `subsumption.py` (three sweeps — see below), `saturation.py`, `sorts.py` (a union-find over
+argument positions, merged whenever the same variable or the same term is written in two of them —
+run before step 4 so a witness can be named after the universe it belongs to, and again over the
+clauses so the counter-model can group what it prints), `counterexample.py` (a finite model of the
+surviving clauses, built by DPLL over their ground instances, described in the problem's own
+vocabulary, and checked by evaluating the original assumptions and conclusion in it), `config.py`,
+`narration.py`, `output.py`, and the `parsing/` subpackage (`aliases.py` → `tokenizer.py` →
+`parser.py`).
 
 The core does not print. It calls an *event* in `narration.py` — one function per thing that
 happened, not per line of output — and that module owns the wording and layout:
@@ -624,7 +647,8 @@ part of the search a reader cannot reconstruct from the result, so a step that i
 would have taken looks arbitrary until this names the key that overruled it — which is worth a block
 per step only while that is the question being asked, hence the default. The key *names* live in
 `search.STRATEGY_KEY_NAMES`, beside the functions, so the printed reason cannot drift from the key
-that ran; `narration.RANKING_KEY_NAMES` holds their Hebrew.
+that ran; their words are in the catalogues like any others, reached with
+`phrase_table("ranking_key_names")`.
 
 Do not reach for a lookahead key to make the search "think ahead": measured, ranking a candidate by
 whether □ is one step away afterwards takes the CEO example from 7 steps to **23**, because a large

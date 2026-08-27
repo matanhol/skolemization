@@ -27,6 +27,14 @@ The search is deliberately small: domain sizes 1, 2, 3 ... up to a cap, all
 interpretations of the constants and functions, and a plain DPLL over the
 ground instances of the clauses.  Teaching scale, not competition scale -- and
 when nothing is found it says so rather than implying there is no model.
+
+That is the mechanism.  What is *said* about the model is a separate question
+with its own answer, and it is under the ``WHAT TO SAY ABOUT THE MODEL`` banner
+further down: which facts are worth printing at all, why they are printed as
+formulas rather than as prose, and the order they are put in.  The model built
+here is never printed -- it is the proof that the description is satisfiable
+rather than merely plausible, and what an explanation points at when it names a
+witness.
 """
 
 from itertools import product
