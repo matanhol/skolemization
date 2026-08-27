@@ -2161,22 +2161,38 @@ def _say_facts(
 
 
 def _say_reason(
-    reason
+    reason,
+    indent="            "
 ):
 
     """One line under a formula: what makes it come out that way here.
 
     A reason that names a subformula prints it after the sentence, so the
     reader sees which condition was never met rather than being told that one
-    was not.
+    was not.  A side may also carry a reason of its own -- "the left side
+    holds" is exactly the question the reader is left with -- and that one is
+    told the same way, one level further in, so the sentence sits under the
+    formula it is about rather than beside it.
+
+    A reason that names an element nests the same way, for the same reason: it
+    says *which* element was chosen and not *why* that one works, so the body
+    it was chosen for carries its own reason, already instantiated at that
+    element.  Nothing is printed ahead of it -- the quantified formula is on
+    the line above and the body appears inside the nested sentence -- so this
+    is a bare recursive call rather than a formula followed by one.
+
+    The nesting is the only thing ``indent`` is for: the top level keeps the
+    indents this printed before there was a second level.
     """
 
     key, values = reason
 
+    # An element is the one value a reason interpolates; the rest of the
+    # phrases take no arguments at all, so asking for one would be a lie.
     if "element" in values:
 
         say(
-            "            "
+            indent
             + phrase(
                 f"reason_{key}",
                 element=ltr(
@@ -2185,12 +2201,22 @@ def _say_reason(
             )
         )
 
-        return
+    else:
 
-    say(
-        "            "
-        + phrase(f"reason_{key}")
-    )
+        say(
+            indent
+            + phrase(f"reason_{key}")
+        )
+
+    # Attached only when it says something, so its presence is the test.
+    body = values.get("body_reason")
+
+    if body is not None:
+
+        _say_reason(
+            body,
+            indent + "    "
+        )
 
     for name in ("condition", "consequent"):
 
@@ -2198,12 +2224,22 @@ def _say_reason(
             continue
 
         say_block(
-            "                ",
+            indent + "    ",
             formula_str(
                 values[name]
             ),
-            indent="                "
+            indent=indent + "    "
         )
+
+        # Attached only when it says something, so its presence is the test.
+        nested = values.get(f"{name}_reason")
+
+        if nested is not None:
+
+            _say_reason(
+                nested,
+                indent + "        "
+            )
 
 
 def countermodel_not_found(

@@ -249,32 +249,31 @@ def _checked(
 
     """One formula, its verdict, and why -- with elements named as witnesses.
 
-    An explanation that points at an element points at it by the name the
-    reader was given (``a1``), or says "some element" when the element is not
-    one the clauses ever named.
+    The model's elements are integers and the model is never printed, so the
+    only handle the reader has on one is the witness name the clauses gave it
+    (``c1``); an element the clauses never named prints as ``?``, and carries
+    no explanation of its own, there being no name to instantiate a body with.
+
+    The naming is ``why``'s to do, not ours, which is why ``elements`` is
+    handed down rather than applied to what comes back.  A reason that names an
+    element also shows its quantifier's body *instantiated at that element* --
+    ``P(c3)``, not ``P(x)`` -- and that formula can only be built where the
+    formulas are built, with the name already in hand.  Renaming afterwards
+    would mean carrying a binding down the whole reason tree and doing formula
+    surgery here, in the module that knows least about it.
     """
 
-    verdict, (key, values) = why(
+    verdict, reason = why(
         formula,
-        model
+        model,
+        elements
     )
-
-    if "element" in values:
-
-        values = dict(
-            values
-        )
-
-        values["element"] = elements.get(
-            values["element"],
-            "?"
-        )
 
     return (
         formula,
         verdict,
         is_conclusion,
-        (key, values)
+        reason
     )
 
 

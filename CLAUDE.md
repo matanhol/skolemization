@@ -704,16 +704,72 @@ plausible, and it is what the explanations point at when they name a witness. It
 witnesses and `f(a) ≠ a` over a smaller domain, because a function sending an element to itself
 reads as "the owner of x is x".
 
-**Every assumption is explained, and a `∀` never by example.** `why` returns a structured reason:
-vacuous (naming the condition nothing satisfies — checked over *all* the ∀-bound variables, not just
-the outermost), true of every element, witnessed by a named element for an `∃`, or an implication
-whose left-hand side fails. The assumptions must come out true and the conclusion false; a wrong
-verdict is printed with a ⚠️ rather than smoothed over, since it would mean the model, the
-saturation or the evaluator is broken.
+**Every assumption is explained, and a `∀` that holds is never explained by example.** `why` returns
+a structured reason: vacuous (naming the condition nothing satisfies — checked over *all* the
+∀-bound variables, not just the outermost), true of every element, witnessed by a named element for
+an `∃`, or one of the three verdicts an implication can have — vacuous, held by its right-hand side,
+or failed. Only an `∃` names an element **in favour**, because there the element *is* the
+explanation; a `∀` that holds is "it holds of every element" or "vacuously, nothing satisfies the
+condition", and never a specimen, since one element is not why a statement about all of them is
+true. Naming the element that **breaks** a `∀` (`UNIVERSAL_FAILS`) is the opposite move and always
+was allowed: a counter-example is not an example, and that element is the entire content of the
+failure. The assumptions must come out true and the conclusion false; a wrong verdict is printed
+with a ⚠️ rather than smoothed over, since it would mean the model, the saturation or the evaluator
+is broken.
 
-Two refusals, said out loud: a **focused** KB (its substitution is a guess) and a run under
-**`SET_OF_SUPPORT`** (which never tried the inferences among the assumptions, so its running dry
-certifies nothing).
+**A reason carries the reason for the side that decided it, and a named element the reason for its
+own body.** "The left side holds" is exactly the point at which a reader wants to ask *why*, so
+`_reason`'s `Implies` branch attaches to each side it prints that side's own reason: `condition`
+with `condition_reason` for a vacuous implication, `consequent` with `consequent_reason` for one
+that holds, both for one that fails. The two verdicts that answer *which element* — `WITNESSED`, an
+`∃` that holds, and `UNIVERSAL_FAILS`, a `∀` that fails — leave the reader with exactly the same
+next question, "why that one", and answer it the same way, attaching `body_reason` from the helper
+they share (`_at_element`). Every nested reason comes from calling `_reason` on that side, or on
+that body, under the verdict the branch has already settled — an implication fails in exactly one
+way, and both element branches know how the body comes out there — so nothing is re-evaluated to
+find it. A body arrives **instantiated at the element**, `P(c3)` and not `P(x)`, through
+`substitution.substitute_formula`, which already drops a binding at a quantifier that rebinds the
+variable; a line that names an element has to stand on its own, where `P(x)` would send the reader
+back up the block to find out what `x` was. That second level is usually where the counter-example
+actually lives: the conclusion `(∃x (P(x) → ∃y Q(x, y))) → (∃x ∃y Q(x, y))` fails because its left
+side holds, and its left side holds **because of `c3`** — which the body then says outright, `P(c3)`
+being false, so `P(c3) → …` is vacuously true and one such element is all an `∃` asks for — while
+the assumption carrying the same body under a `∀` is vacuous the other way round, its `∀` failing
+**at `c1`**, where that same body is an implication whose left side holds and whose right side has
+no witness. The nesting is recursive by construction and terminates, because every nested reason is
+about a strictly smaller formula; `narration._say_reason` takes an `indent` and calls itself. The
+witness names are an *argument* to that construction and not a pass over its result:
+`why(formula, model, names=())` takes the element→name dict `prover._witness_elements` computes and
+`_reason` writes the name straight in, so nothing renames anything afterwards. It has to be that way
+round — a body instantiated at `c3` can only be built where the formulas are built, with the name
+already in hand, and renaming a finished reason would mean carrying a binding down the whole tree
+and doing formula surgery in `prover.py`, the module that knows least about it.
+
+**A nested reason that would say nothing is left off, and that omission is what keeps `narration.py`
+free of any import from `counterexample.py`.** A `PLAINLY` reason — "that is how it comes out in the
+model" — tells a reader nothing they did not just read, so an atom on the left adds no line, and a
+body that comes out plainly adds none either. An element with **no name** is left off by the same
+rule and one argument more: the sentence still points at the element, but there is no name to
+substitute, and being named is precisely what makes an element a constant of the model, which is
+what makes its instantiated body safe to evaluate at all. Since the key is then simply absent in
+every one of those cases, the narration spots them by `values.get(f"{name}_reason")` and
+`values.get("body_reason")` coming back `None` rather than by comparing a key against
+`counterexample.PLAINLY`. The notebook flattens every module into one namespace, so an import
+between those two would be paid for in exactly the currency this package is short of. Nothing new
+was needed in the catalogues either: a nested sentence is one of the `reason_*` phrases both
+languages already carry, so both got the nesting for free.
+
+Two refusals, and **only one of them is reachable today**. A run under **`SET_OF_SUPPORT`** is
+turned away out loud (`prover._build_countermodel`), because that search never tried the inferences
+among the assumptions and its running dry certifies nothing. A **focused** KB — whose substitution
+is a guess — is refused only *structurally*: the pass is called on the general search's result
+alone, so with `FALLBACK_TO_GENERAL` on the focused attempt is followed by a general one that does
+get explained, and with it off a focused saturation ends with no counter-model and no word about
+why. `narration.countermodel_refused(focused=True)` and its phrase exist in both catalogues with no
+call site. Either the call is missing or the branch is, and which one is a decision nobody has made
+yet; `counterexample.finite_model`'s `given_up` is dead in the same way, computed in
+`prover._build_countermodel` and dropped, with `countermodel_gave_up_*` unreachable in both
+catalogues.
 
 **Every saturating search explains itself, the focused pass included** — that is where the reader
 most needs it, since the focused KB is a guess. What differs is the closing sentence, and it must:

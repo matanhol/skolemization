@@ -47,7 +47,9 @@ from .formulas import (
     Implies,
     Not,
     Or,
+    Term,
 )
+from .substitution import substitute_formula
 
 
 # How far the search goes before giving up.  Three elements is enough for every
@@ -751,10 +753,42 @@ def evaluate(
 # Why a formula came out the way it did.  A reason is (key, values): the key
 # picks the sentence, the values are the elements or subformulas it names.
 #
+# A reason may carry another reason.  "The left side holds" is exactly the
+# point at which a reader wants to ask *why*, so an implication's reason
+# carries the reason for whichever side decided it, keyed beside the formula it
+# explains: ``condition`` with ``condition_reason``, ``consequent`` with
+# ``consequent_reason``.  The nested one is computed under that side's own
+# verdict, which the branch it came from already settled.  This nests
+# recursively by construction -- a side that is itself an implication brings
+# its own sides with it -- and it terminates, because every nested reason is
+# about a strictly smaller formula.
+#
+# A reason that *names* an element carries one too, keyed ``body_reason``.
+# WITNESSED and UNIVERSAL_FAILS both answer "which element", and the reader's
+# next question is always "why that one" -- so the quantifier's body is
+# instantiated at that element and asked the same question, under the verdict
+# the branch has already settled.  The body comes out **instantiated**
+# (``P(c3)``, not ``P(x)``), because a line naming an element has to stand on
+# its own.
+#
+# An element with no name brings no body reason.  The sentence still points at
+# it (as "?"), but there is nothing to substitute -- and it is being *named*
+# that makes an element a constant of the model, which is what makes the
+# substituted body safe to evaluate at all.
+#
+# A nested PLAINLY reason is left off entirely rather than attached: "that is
+# how it comes out in the model" tells the reader nothing they did not just
+# read, and an absent key is a case nothing downstream has to recognise -- the
+# notebook flattens every module into one namespace, so a narration that had to
+# import this one to spot it would be paying for the privilege.
+#
 # The one rule worth stating: a **universal** is never explained by pointing at
 # an element -- "it holds of every element", or "vacuously, because nothing
 # satisfies the condition".  Only an **existential** names a witness, because
-# there naming one *is* the explanation.
+# there naming one *is* the explanation.  Naming the element that *breaks* a ∀
+# (UNIVERSAL_FAILS) is a different thing: a counter-example is not an example,
+# and it is the whole content of the failure -- which is why explaining the
+# body *there* deepens the counter-example rather than softening the rule.
 
 VACUOUS_UNIVERSAL = "vacuous_universal"
 UNIVERSAL_HOLDS = "universal_holds"
@@ -769,10 +803,19 @@ PLAINLY = "plainly"
 
 def why(
     formula,
-    model
+    model,
+    names=()
 ):
 
-    """``(verdict, reason)`` -- is it true here, and what makes it so."""
+    """``(verdict, reason)`` -- is it true here, and what makes it so.
+
+    ``names`` maps a domain element to the witness name the reader was given
+    (``{0: "c1", 1: "c3"}``).  The model's elements are integers and the model
+    is never printed, so a name is the only handle a reader has on an element --
+    which is why the naming happens here, where the reason is built, rather than
+    over a finished reason afterwards: a named element is also the only one
+    whose body can be instantiated and explained.
+    """
 
     verdict = evaluate(
         formula,
@@ -785,7 +828,8 @@ def why(
             formula,
             model,
             {},
-            verdict
+            verdict,
+            dict(names)
         )
     )
 
@@ -794,7 +838,8 @@ def _reason(
     formula,
     model,
     binding,
-    verdict
+    verdict,
+    names
 ):
 
     """The one sentence worth saying about why this formula came out so."""
@@ -805,7 +850,8 @@ def _reason(
             formula,
             model,
             binding,
-            verdict
+            verdict,
+            names
         )
 
     if isinstance(formula, Exists):
@@ -822,7 +868,14 @@ def _reason(
 
                     return (
                         WITNESSED,
-                        {"element": element}
+                        _at_element(
+                            formula,
+                            model,
+                            binding,
+                            element,
+                            True,
+                            names
+                        )
                     )
 
         return (
@@ -832,6 +885,37 @@ def _reason(
 
     if isinstance(formula, Implies):
 
+        def because(
+            name,
+            side,
+            side_verdict
+        ):
+
+            """That side, and why it came out that way -- when there is a why.
+
+            The verdict is passed in rather than evaluated: each branch below
+            has already established what its sides come to, and re-asking the
+            model would only recompute an answer we are standing inside.
+            """
+
+            values = {
+                name: side
+            }
+
+            reason = _reason(
+                side,
+                model,
+                binding,
+                side_verdict,
+                names
+            )
+
+            if reason[0] != PLAINLY:
+
+                values[name + "_reason"] = reason
+
+            return values
+
         if verdict:
 
             if not evaluate(
@@ -840,22 +924,47 @@ def _reason(
                 binding
             ):
 
+                # True because the condition is not -- so the condition is
+                # false, and that is the verdict its own reason answers.
                 return (
                     VACUOUS_IMPLICATION,
-                    {"condition": formula.a}
+                    because(
+                        "condition",
+                        formula.a,
+                        False
+                    )
                 )
 
+            # True with a true condition leaves only one way for it to be
+            # true: the consequent is.
             return (
                 IMPLICATION_HOLDS,
-                {"consequent": formula.b}
+                because(
+                    "consequent",
+                    formula.b,
+                    True
+                )
             )
+
+        # An implication fails in exactly one way, so both verdicts are known
+        # without asking: the condition holds and the consequent does not.
+        values = because(
+            "condition",
+            formula.a,
+            True
+        )
+
+        values.update(
+            because(
+                "consequent",
+                formula.b,
+                False
+            )
+        )
 
         return (
             IMPLICATION_FAILS,
-            {
-                "condition": formula.a,
-                "consequent": formula.b
-            }
+            values
         )
 
     return (
@@ -864,11 +973,68 @@ def _reason(
     )
 
 
+def _at_element(
+    formula,
+    model,
+    binding,
+    element,
+    verdict,
+    names
+):
+
+    """The values of a reason that names an element: the name, and the body.
+
+    Shared by the two reasons that answer "which element" -- an ∃ that holds
+    and a ∀ that fails.  Both leave the reader with the same next question, and
+    both know the verdict of the body there without re-asking the model, so the
+    body is instantiated at the element and explained under that verdict.
+
+    Instantiating is what makes the nested reason worth reading: ``P(c3)``
+    stands on its own where ``P(x)`` would send the reader back up the block to
+    find out what ``x`` was.
+    """
+
+    values = {
+        "element": names.get(
+            element,
+            "?"
+        )
+    }
+
+    if element not in names:
+
+        # Nothing to substitute, and nothing safe to evaluate: an element the
+        # clauses never named is not a constant of the model.
+        return values
+
+    reason = _reason(
+        substitute_formula(
+            formula.body,
+            {
+                formula.var: Term(
+                    names[element]
+                )
+            }
+        ),
+        model,
+        binding,
+        verdict,
+        names
+    )
+
+    if reason[0] != PLAINLY:
+
+        values["body_reason"] = reason
+
+    return values
+
+
 def _universal_reason(
     formula,
     model,
     binding,
-    verdict
+    verdict,
+    names
 ):
 
     """Why a ∀ holds -- in general terms, or vacuously; never by example."""
@@ -885,7 +1051,14 @@ def _universal_reason(
 
                 return (
                     UNIVERSAL_FAILS,
-                    {"element": element}
+                    _at_element(
+                        formula,
+                        model,
+                        binding,
+                        element,
+                        False,
+                        names
+                    )
                 )
 
     # "Vacuously" has to be checked over *all* the universally quantified
