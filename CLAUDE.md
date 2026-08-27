@@ -306,6 +306,7 @@ Direction is handled at two levels, and both are needed:
    line that is *nothing but* a formula, the counter-model's fact lines among them: with no
    strong-RTL character on it `say` leaves it LTR already, and an isolate would only add
    invisible bytes to a line that was never going to move.
+
 **The indent goes outside the isolate, and both ways of putting it inside lose it.** Inside and at
 the front — where a caller naturally writes it — the indent is part of the right-to-left run: it
 takes level 1, rule **L2** reverses it along with the text, and it lands at the visual right where
@@ -319,10 +320,58 @@ spaces are reset to left-to-right and put back on the right. Outside the isolate
 line's own layout at paragraph level: L2 never reverses a level-0 run, L1 only touches the end, and
 they stay where they are written.
 
-This was got wrong twice (`0403079`, reverted by `0b82f41`) by reasoning from L2 and forgetting L1.
-What settled it was a screenshot of the failure plus a bidi implementation *with L1 in it*, believed
-only after it reproduced that screenshot: it predicts 0 columns of indent for both broken encodings
-and 8 for this one. **Reason about L2 alone and you will re-derive the same wrong answer twice.**
+**A right-to-left block is anchored on the right, and depth steps inward from that edge**
+(`output.say_nested`). A reader of Hebrew starts at the *right* edge of every line, so that edge is
+the margin: padding a line by `level × unit` on the left moves the anchor the wrong way, and the
+block then looks wrong even when the spaces land in exactly the columns that were predicted for
+them. The anchor is a column every line of a level *ends* on, and it depends on the longest line in
+the block, which is why the emitter takes the whole block rather than a line at a time:
+
+```
+pad           = anchor(level) - len(line)
+anchor(level) = innermost + (deepest - level) * INDENT
+innermost     = max(len(line))          so no pad is negative and nothing is clipped
+```
+
+`INDENT` is 8, in `output.py`. A line that opens a level carries the arrow from
+`countermodel_block_arrow` (`←` in Hebrew, `→` in English) and the level's closing line comes back
+to the same anchor, so a level is a pair of lines with a common right edge. Left-to-right output
+keeps the layout it always had — indented from the left, the arrow leading rather than trailing.
+`hebrew_indentation.py` at the repo root is the author's reference for the shape: its outermost
+lines are padded furthest and its innermost sits on the margin itself. **This applies to the
+counter-model's check block and nothing else** — every other part of the transcript is one or two
+levels deep and keeps its plain left indentation, so do not go looking for the anchor there.
+
+**A level exists only where a block opens and closes.** The two sides of an implication are the body
+of the level that its concluding line closes, not a level each: nesting them deeper says there is a
+block there to be entered and left, and there is not.
+
+**The direction marks cost a column each on the author's terminal**, which is the opposite of what a
+Unicode-correct implementation would assume. Established by printing the same four lines padded two
+ways: counting `RLI`, `PDI` and every `LRI` toward the width lines them up, ignoring them does not.
+So the emitter's width is `len(text)` *with* the marks in it, and that is why the padding is
+computed in `output.py`, where the marks are added, rather than by any caller holding the bare text.
+
+**The arrow is appended after the isolate closes, and the isolate is what holds it on the right.**
+Inside the isolate the arrow is part of the right-to-left run and the terminal puts it on the left;
+without an isolate at all the paragraph itself becomes right-to-left and the arrow flips. Outside a
+closed isolate the line's paragraph level is still 0, the arrow stays at the right, and it hangs
+past the anchor instead of displacing the text — a column of its own. Both alternatives were tried
+and both broke the block.
+
+Two theories that sound right and are not, recorded so nobody spends a day on them again. **Hebrew
+glyphs are not wider than Latin ones**: twenty of each end in the same column on the author's
+terminal, and the misalignment that suggested otherwise was the two extra marks in `⁦c3⁩`. **And the
+marks cannot simply be dropped** — "emit an isolate only where the bidi algorithm strictly requires
+one" is correct as Unicode and wrong here, because the isolate is load-bearing for the arrow above.
+
+**Reasoning about bidi does not substitute for looking at the screen.** The indent question was got
+wrong twice (`0403079`, reverted by `0b82f41`) by arguing from L2 and forgetting L1, and the
+anchored block was got wrong six times after that — every attempt a sound deduction from the
+algorithm, every one visibly broken on a terminal. Everything above was settled by printing
+candidate encodings and looking at them; a bidi implementation *with L1 in it* is worth keeping, but
+it is believed only after it reproduces a screenshot of the failure. Extend this by argument alone
+and you will re-derive the same wrong answers.
 
 **The direction follows the language, and is not a separate setting.** Each catalogue declares its
 `DIRECTION`, and `config.RTL_OUTPUT` is `"auto"` by default: Hebrew gets the marks, English would
@@ -740,7 +789,7 @@ with a ⚠️ rather than smoothed over, since it would mean the model, the satu
 is broken.
 
 **The formula comes first and the verdict after it, and every part of a reason is label → formula →
-why** (`narration.countermodel`, `_say_reason`). A verdict about something the reader has not been
+why** (`narration.countermodel`, `_reason_entries`). A verdict about something the reader has not been
 shown yet is not a verdict to them, so an entry opens with its heading — the assumptions numbered,
 `assumption 1:` (`countermodel_assumption`), the relation axioms `axioms.py` generated numbered
 among them since `Preprocessed.assumption_formulas` carries them and they are checked like any
@@ -760,7 +809,7 @@ by its shape before it is read by its words.
 
 **That layout is two key→key tables, which is why it lives in a module that holds no words.** The
 reason key already says everything the layout needs to know, so `REASON_PARTS` and
-`REASON_CONCLUSIONS`, beside `_say_reason`, map a reason key to the phrase *keys* for its sides'
+`REASON_CONCLUSIONS`, beside `_reason_entries`, map a reason key to the phrase *keys* for its sides'
 labels and for the sentence it licenses — keys, not text, in the same style as
 `search.STRATEGY_KEY_NAMES`, so the catalogues keep every word and `narration.py` keeps the
 decision about which word is said where. Three whole-sentence implication phrases went away with
@@ -788,7 +837,7 @@ being false, so `P(c3) → …` is vacuously true and one such element is all an
 the assumption carrying the same body under a `∀` is vacuous the other way round, its `∀` failing
 **at `c1`**, where that same body is an implication whose left side holds and whose right side has
 no witness. The nesting is recursive by construction and terminates, because every nested reason is
-about a strictly smaller formula; `narration._say_reason` takes an `indent` and calls itself. The
+about a strictly smaller formula; `narration._reason_entries` takes a `level` and calls itself. The
 witness names are an *argument* to that construction and not a pass over its result:
 `why(formula, model, names=())` takes the element→name dict `prover._witness_elements` computes and
 `_reason` writes the name straight in, so nothing renames anything afterwards. It has to be that way

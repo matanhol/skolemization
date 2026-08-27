@@ -649,6 +649,9 @@ factoring של C{index}: """,
     """
 בדיקה של המודל מול השאלה המקורית:""",
 
+    "countermodel_block_arrow":
+    "←",
+
     "countermodel_assumption":
     "הנחה {number}:",
 

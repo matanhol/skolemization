@@ -649,6 +649,9 @@ The search saturated without a contradiction, so the clause set is""",
     """
 Checking the model against the original question:""",
 
+    "countermodel_block_arrow":
+    "→",
+
     "countermodel_assumption":
     "assumption {number}:",
 

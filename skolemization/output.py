@@ -49,6 +49,18 @@ they are written.  This was got wrong twice by reasoning from L2 alone; it is
 now checked with an implementation that has L1 in it, and that implementation
 is only believed because it first reproduces a screenshot of the failure.
 
+**A nested block is anchored on the reader's own margin**, which is why
+``say_nested`` takes the whole block instead of a line at a time.  A
+right-to-left reader starts at the *right* edge of every line, so that edge is
+the margin and depth steps inward from it -- and where the margin falls depends
+on the longest line in the block, which is not known while the block is still
+being printed.  So every line of a level ends in the same column, the innermost
+level ends at the longest line's width, and each level further out ends
+``INDENT`` columns further right; the arrow marking a line that opens a nested
+block hangs past that anchor, forming a column of its own.  Left-to-right
+output keeps the layout it always had -- indented from the left, with the arrow
+leading rather than trailing.
+
 Whether the terminal honours any of this is the terminal's business: recent
 Terminal.app and iTerm2 reorder these correctly, while xterm.js-based
 terminals (VS Code) ignore the marks and show the text unchanged.
@@ -58,7 +70,10 @@ import re
 import unicodedata
 
 from . import config
-from .phrases import direction
+from .phrases import (
+    direction,
+    phrase,
+)
 
 
 # U+2067 RIGHT-TO-LEFT ISOLATE ... U+2069 POP DIRECTIONAL ISOLATE.
@@ -255,4 +270,312 @@ def say_block(
         say(
             indent
             + ltr(row)
+        )
+
+
+# How far one level of a nested block steps in from the level inside it, in
+# columns.  Wider than the four columns the left-to-right layout uses, because
+# the right-to-left anchor is a *ragged* edge -- every line of a level ends
+# there, but they start wherever their own length puts them, so the levels are
+# told apart by the step alone and not by a shared left edge as well.
+
+# The three kinds of line a nested block holds.  Repeated from narration.py
+# rather than imported: this module is below it, and the values are what cross
+# the boundary, not the names.
+
+OPENS = "opens"
+ATTACHED = "attached"
+PLAIN = "plain"
+
+INDENT = 8
+
+
+def say_ready(line):
+    """Print a line whose direction marks the caller has already placed.
+
+    :func:`say` marks the *whole* line, which is what almost everything wants.
+    The block arrow is the exception: it has to sit **outside** the isolate,
+    because the isolate is what holds the line's paragraph level at 0 and that
+    is what keeps a trailing neutral on the right.  Swept inside, it crosses to
+    the other side and takes the line's alignment with it.
+
+    So the one caller that needs the arrow outside marks its own text and comes
+    here instead -- still through this module, still silent under
+    ``config.NARRATE``.
+    """
+
+    if not config.NARRATE:
+        return
+
+    print(
+        line
+    )
+
+
+def say_nested(entries):
+    """Print a nested block: (level, kind, text) per line, or None for a blank line.
+
+    ``level`` is the nesting depth, 0 outermost.  ``kind`` is OPENS for a line
+    that a nested block hangs under, and earns it an arrow.  ``text`` is the
+    finished line **without** any indent -- the caller has already wrapped its
+    formulas in :func:`ltr`, and this decides only where the line sits.
+
+    The whole block arrives at once because a right-to-left block cannot be
+    laid out one line at a time: the reader's margin is the *right* edge, and
+    where that edge falls is the longest line in the block.  See the module
+    docstring for the anchoring rule.  The left-to-right layout has no such
+    problem and is untouched by any of it.
+
+    None of this reasons about the bidi algorithm.  Six attempts that did got
+    it wrong; the layout below is the one candidate that was confirmed by
+    rendering it on a real terminal, and every apparent simplification in it
+    has already been tried and reverted.
+    """
+
+    rows = _nested_rows(
+        entries
+    )
+
+    if direction() == "rtl":
+
+        _say_nested_rtl(
+            rows
+        )
+
+        return
+
+    _say_nested_ltr(
+        rows
+    )
+
+
+def _nested_rows(entries):
+    """The block's entries as one entry per *printed* row.
+
+    ``config.TALL_BRACKETS`` makes a formula several rows tall, and an isolate
+    must never span a newline -- so a tall entry becomes one entry per row at
+    the same level, each measured, marked and padded on its own, exactly as
+    :func:`say_block` splits one.  The arrow stays on the first row: it marks
+    the point the nested block opens, and the block opens where the entry
+    starts.
+    """
+
+    rows = []
+
+    for entry in entries:
+
+        if entry is None:
+
+            rows.append(
+                None
+            )
+
+            continue
+
+        level, kind, text = entry
+
+        for index, row in enumerate(_rows_of(text)):
+
+            rows.append(
+                (
+                    level,
+                    # A tall formula's rows all sit at one level, and only the
+                    # first can carry the arrow.
+                    kind
+                    if index == 0
+                    else PLAIN,
+                    row,
+                )
+            )
+
+    return rows
+
+
+def _rows_of(text):
+    """One entry's text as rows, with no isolate left spanning a newline.
+
+    A one-row text is passed straight through, marks and all: it is the line
+    the caller wrote and there is nothing to repair.
+
+    A text with newlines in it can only have come from a formula printed under
+    ``config.TALL_BRACKETS``, and the caller will have wrapped that formula in
+    :func:`ltr` as one piece -- which now opens an isolate on the first row and
+    pops it on the last.  The wrap is undone and reapplied per row, since once
+    the rows are separate lines that is the only marking that means anything;
+    a caller that hands the rows over unmarked gets the same treatment and the
+    same result.
+    """
+
+    text = str(
+        text
+    )
+
+    if "\n" not in text:
+        return [text]
+
+    if text.startswith(LRI) and text.endswith(PDI):
+        text = text[len(LRI):-len(PDI)]
+
+    return [
+        ltr(row)
+        for row
+        in text.split("\n")
+    ]
+
+
+def _width(text):
+    """How many columns a line of the block takes up.
+
+    ``len``, direction marks included, which is not what a Unicode-correct
+    implementation would do: ``LRI`` and ``PDI`` are formatting characters and
+    ought to be zero-width.  On the terminal this layout was settled against
+    they each advance a column, and the anchoring was measured there rather
+    than derived from the standard -- so stripping them would push every line
+    holding a formula two columns off its own anchor.
+    """
+
+    return len(
+        text
+    )
+
+
+def _say_nested_rtl(rows):
+    """The right-to-left layout: every line of a level ends in the same column.
+
+    The pad is computed from the *text* alone and the arrow appended after it,
+    so an arrow hangs past the anchor instead of pushing its own line off it --
+    which is what leaves the arrows standing in a column of their own beyond
+    the block.
+
+    The isolate is left entirely to ``say``: it wraps a line holding
+    right-to-left text in ``RLI...PDI``, and that is what holds the line's
+    paragraph level at 0, which is what keeps the trailing arrow on the right.
+    Take the isolate away and every arrow crosses to the other side.
+    """
+
+    arrow = phrase(
+        "countermodel_block_arrow"
+    )
+
+    printed = [
+        row
+        for row
+        in rows
+        if row is not None
+    ]
+
+    deepest = max(
+        (
+            level
+            for level, _, _
+            in printed
+        ),
+        default=0,
+    )
+
+    innermost = max(
+        (
+            _width(text)
+            for _, _, text
+            in printed
+        ),
+        default=0,
+    )
+
+    for row in rows:
+
+        if row is None:
+
+            say(
+                ""
+            )
+
+            continue
+
+        level, kind, text = row
+
+        anchor = innermost + (deepest - level) * INDENT
+
+        # The text is marked here rather than by say(), so the arrow can be
+        # appended *after* the isolate closes.  Inside it, a trailing neutral
+        # takes the right-to-left level and renders on the left.
+        body = (
+            rtl(text)
+            if marks_wanted()
+            else text
+        )
+
+        line = (
+            " " * (anchor - _width(text))
+            + body
+        )
+
+        if kind == OPENS:
+
+            line = (
+                line
+                + " "
+                + arrow
+            )
+
+        say_ready(
+            line
+        )
+
+
+def _say_nested_ltr(rows):
+    """The left-to-right layout, which is what it always was.
+
+    Four columns per level from the left, and the arrow *before* the text it
+    belongs to, hanging into the two columns the block is offset by -- the
+    mirror image of the right-to-left case, and the reason a reader of either
+    finds the arrows on the side they start each line from.
+
+    An ATTACHED line steps one level further in here, where the right-anchored
+    layout leaves it on its label's own anchor.  The two directions nest
+    opposite ways: anchored on the right, a formula *ends* where its label
+    begins, so they share a column; anchored on the left it has to sit under
+    that label, which is one step in.
+    """
+
+    arrow = phrase(
+        "countermodel_block_arrow"
+    )
+
+    for row in rows:
+
+        if row is None:
+
+            say(
+                ""
+            )
+
+            continue
+
+        level, kind, text = row
+
+        pad = (
+            len(arrow)
+            + 1
+            + (
+                level
+                + (1 if kind == ATTACHED else 0)
+            )
+            * 4
+        )
+
+        if kind == OPENS:
+
+            say(
+                " " * (pad - len(arrow) - 1)
+                + arrow
+                + " "
+                + text
+            )
+
+            continue
+
+        say(
+            " " * pad
+            + text
         )

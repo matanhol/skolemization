@@ -39,6 +39,7 @@ from .output import (
     ltr,
     say,
     say_block,
+    say_nested,
 )
 from .phrases import (
     phrase,
@@ -2104,6 +2105,15 @@ def countermodel(
     # point at one; the conclusion is the entry that names itself.
     number = 0
 
+    # The block is collected and handed over whole rather than printed as it
+    # goes.  A right-to-left reader starts at the *right* edge, so that edge is
+    # the margin the nesting steps in from -- and where it falls is decided by
+    # the longest line in the block, which is not known until the last entry is
+    # in hand.  Nothing here knows about that: an entry says only what the line
+    # is and how deep it sits, and ``say_nested`` owns the padding, the arrow
+    # and the direction.
+    entries = []
+
     for position, (formula, verdict, is_conclusion, reason) in enumerate(checks):
 
         if is_conclusion:
@@ -2135,33 +2145,62 @@ def countermodel(
         # rather than as more of the previous one; one under the section
         # header, whose own leading newline separates it from what came before
         # rather than from what follows.
-        say(
-            ("\n\n" if position else "\n")
-            + header
+        entries.append(
+            None
         )
 
-        # The formula first and the verdict after it: a reader told "it holds"
-        # before being shown *what* holds is being told about nothing.
-        say_block(
-            "    ",
-            formula_str(formula),
-            indent="    "
+        if position:
+
+            entries.append(
+                None
+            )
+
+        # The heading is what the entry's block hangs under, and the formula
+        # belongs to the heading rather than to what is nested beneath it: the
+        # formula comes first and the verdict after it, because a reader told
+        # "it holds" before being shown *what* holds is being told about
+        # nothing.
+        entries.append(
+            (
+                0,
+                OPENS,
+                header
+            )
         )
 
-        say(
-            "\n"
-            + "    "
-            + phrase(label)
+        entries.append(
+            (
+                0,
+                ATTACHED,
+                ltr(
+                    formula_str(formula)
+                )
+            )
         )
 
-        say(
-            ""
+        entries.append(
+            (
+                1,
+                PLAIN,
+                phrase(label)
+            )
         )
 
-        _say_reason(
-            reason,
-            "    "
+        # The reason is a block of its own, set off from the verdict above it.
+        entries.append(
+            None
         )
+
+        entries.extend(
+            _reason_entries(
+                reason,
+                1
+            )
+        )
+
+    say_nested(
+        entries
+    )
 
     if holds:
 
@@ -2197,6 +2236,18 @@ def _say_facts(
 # the whole difference between one shape and the next -- which is why it lives
 # here as data rather than as a branch per reason, the way STRATEGY_KEY_NAMES
 # does.  A reason absent from it is one sentence and no formula.
+
+# What kind of line an entry in the check block is, which is all the emitter
+# needs to lay it out: a line that OPENS a block earns the arrow; one ATTACHED
+# to the label above it -- a formula, or a sentence about that formula -- ends
+# where its label starts when the text is anchored on the right, and steps one
+# further in when it is anchored on the left, because the two directions nest
+# opposite ways; anything else is PLAIN.
+
+OPENS = "opens"
+ATTACHED = "attached"
+PLAIN = "plain"
+
 
 REASON_PARTS = {
 
@@ -2238,20 +2289,21 @@ REASON_CONCLUSIONS = {
 }
 
 
-def _say_reason(
+def _reason_entries(
     reason,
-    indent="    "
+    level
 ):
 
-    """What makes a formula come out the way it does here, laid out as a block.
+    """What makes a formula come out the way it does here, as block entries.
 
-    Every part reads label -> formula -> why: the sentence naming a side is
-    printed *before* that side, so a reader is never told about a formula they
-    have not been shown, and a side's own reason sits under it rather than
-    beside it.  Sibling parts are separated by a blank line, because an
-    implication over two formulas run together leaves the reader pairing
-    sentence-halves with formulas by position.
+    Nothing is printed: the whole check block is anchored on its longest line,
+    so it is collected first and emitted once (see :func:`countermodel`).  Each
+    entry is ``(level, kind, text)`` -- ``kind`` one of OPENS, ATTACHED or
+    PLAIN -- or ``None`` for a blank line.
 
+    Every part reads label -> formula -> why: the sentence naming a side comes
+    *before* that side, so a reader is never told about a formula they have not
+    been shown, and a side's own reason sits under it rather than beside it.
     The parts are closed by the sentence they license -- the condition fails,
     *therefore* the implication holds vacuously -- which is the one step the
     layout cannot show.
@@ -2261,69 +2313,113 @@ def _say_reason(
     ``_because`` variant ends in a colon and introduces the body's own reason,
     the plain one ends in a full stop and closes the thought.
 
-    ``indent`` is the nesting, one level per step inwards.
+    A level is a block that *opens* and *closes*, which is a stricter thing
+    than a step of indentation: a line that opens one is answered by the line
+    that closes it at the same level, and the two sides of an implication are
+    not levels at all -- they are the body of the level the closing sentence
+    ends.  So a nested reason steps in only when it is a block in its own
+    right, and the body under a line naming an element stays at that line's own
+    level, because that line is what opened it.
     """
 
     key, values = reason
 
     parts = REASON_PARTS.get(key)
 
+    entries = []
+
     if parts is not None:
 
-        for position, (name, label) in enumerate(parts):
+        # Stepping back out of a nested block is where the blank line goes:
+        # without it the line that closes the level reads as more of the block
+        # it is closing.  Siblings that opened nothing need no separation --
+        # they are one label over one formula.
+        stepped_out = False
 
-            say(
-                ("\n" if position else "")
-                + indent
-                + phrase(label)
-            )
-
-            say_block(
-                indent + "    ",
-                formula_str(
-                    values[name]
-                ),
-                indent=indent + "    "
-            )
+        for name, label in parts:
 
             # Attached only when it says something, so its presence is the test.
             nested = values.get(f"{name}_reason")
 
-            if nested is not None:
-
-                # A nested reason that opens a block of its own is set off from
-                # the formula above it; a single closing sentence belongs
-                # against that formula, since it is about nothing else.
-                opens_block = (
+            # A nested reason that is a block of its own steps in and hangs
+            # under this label; a single closing sentence belongs against the
+            # formula above it, since it is about nothing else.
+            steps_in = (
+                nested is not None
+                and (
                     nested[0] in REASON_PARTS
                     or "body_reason" in nested[1]
                 )
+            )
 
-                if opens_block:
+            if stepped_out:
 
-                    say(
-                        ""
+                entries.append(
+                    None
+                )
+
+            entries.append(
+                (
+                    level,
+                    OPENS if steps_in else PLAIN,
+                    phrase(label)
+                )
+            )
+
+            entries.append(
+                (
+                    level,
+                    ATTACHED,
+                    ltr(
+                        formula_str(
+                            values[name]
+                        )
+                    )
+                )
+            )
+
+            stepped_out = steps_in
+
+            if nested is not None:
+
+                if steps_in:
+
+                    entries.append(
+                        None
                     )
 
-                _say_reason(
-                    nested,
-                    indent + "    "
+                entries.extend(
+                    _reason_entries(
+                        nested,
+                        level + 1
+                        if steps_in
+                        else level
+                    )
                 )
 
         conclusion = REASON_CONCLUSIONS.get(key)
 
         if conclusion is not None:
 
-            say(
-                "\n"
-                + indent
-                + phrase(conclusion)
+            if stepped_out:
+
+                entries.append(
+                    None
+                )
+
+            entries.append(
+                (
+                    level,
+                    PLAIN,
+                    phrase(conclusion)
+                )
             )
 
-        return
+        return entries
 
     # Attached only when it says something, so its presence is the test -- and
-    # here it also chooses the spelling, colon against full stop.
+    # here it also chooses the spelling, colon against full stop, and marks the
+    # line as the one the body hangs under.
     body = values.get("body_reason")
 
     # An element is the one value a reason interpolates; the rest of the
@@ -2336,29 +2432,40 @@ def _say_reason(
             else f"reason_{key}"
         )
 
-        say(
-            indent
-            + phrase(
-                spelling,
-                element=ltr(
-                    values["element"]
-                )
+        text = phrase(
+            spelling,
+            element=ltr(
+                values["element"]
             )
         )
 
     else:
 
-        say(
-            indent
-            + phrase(f"reason_{key}")
+        text = phrase(f"reason_{key}")
+
+    entries.append(
+        (
+            level,
+            OPENS
+            if body is not None
+            else PLAIN,
+            text
         )
+    )
 
     if body is not None:
 
-        _say_reason(
-            body,
-            indent + "    "
+        # This line is what opened the level; the body is that block's
+        # contents, not a level of its own, and the sentence closing the body
+        # is what closes this line's block.
+        entries.extend(
+            _reason_entries(
+                body,
+                level
+            )
         )
+
+    return entries
 
 
 def countermodel_not_found(
