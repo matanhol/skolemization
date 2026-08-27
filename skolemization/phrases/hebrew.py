@@ -726,10 +726,6 @@ factoring של C{index}: """,
     """
 העדים:""",
 
-    "countermodel_added":
-    """
-מה שהחיפוש הוסיף:""",
-
 }
 
 

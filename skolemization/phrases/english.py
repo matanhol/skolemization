@@ -727,10 +727,6 @@ always holds:""",
     """
 The witnesses:""",
 
-    "countermodel_added":
-    """
-What the search added:""",
-
 }
 
 

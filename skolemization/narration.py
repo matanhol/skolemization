@@ -2009,16 +2009,19 @@ def countermodel(
     """The model a saturated KB was hiding, in the facts the question does not already give.
 
     What a reader cannot get from the question is what gets said: which
-    predicates never hold, everything known about each witness, and whatever
-    the search added on top.  The universes are not explained -- the witness
-    names carry them, ``c`` against ``d``, because skolemization already chose
-    them that way.
+    predicates never or always hold, and everything known about each witness.
+    What the search *added* is not a third kind and is no longer shown -- those
+    clauses are general facts, so they follow from the assumptions the reader
+    already has, and a list of derived clauses describes the search's history
+    rather than the model.  The universes are not explained -- the witness names
+    carry them, ``c`` against ``d``, because skolemization already chose them
+    that way.
 
     Every fact arrives as a *rendered formula line*: ``description`` is
     ``{"never": [line, ...], "always": [...], "groups": [([names], [line, ...]),
-    ...], "added": [...]}``, in the order it is to be printed.  Nothing is
-    assembled into a sentence here -- a formula reads better than prose about
-    it, and this module only decides where it sits.
+    ...]}``, in the order it is to be printed.  Nothing is assembled into a
+    sentence here -- a formula reads better than prose about it, and this module
+    only decides where it sits.
     """
 
     say(
@@ -2054,8 +2057,8 @@ def countermodel(
         if not lines:
             continue
 
-        # The blank line before the section is inside the phrase, the way
-        # ``countermodel_added`` and the witnesses header carry theirs.
+        # The blank line before the section is inside the phrase, the way the
+        # witnesses header carries its own.
         say(
             phrase(key)
         )
@@ -2091,16 +2094,6 @@ def countermodel(
 
         _say_facts(
             facts
-        )
-
-    if description["added"]:
-
-        say(
-            phrase("countermodel_added")
-        )
-
-        _say_facts(
-            description["added"]
         )
 
     say(

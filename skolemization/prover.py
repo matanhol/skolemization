@@ -196,12 +196,6 @@ def _build_countermodel(
         ),
         describe(
             final_kb,
-            [
-                clause
-                for position, clause
-                in enumerate(prepared.clauses)
-                if position not in prepared.conclusion_clauses
-            ],
             prepared.predicate_order
         ),
         checks,

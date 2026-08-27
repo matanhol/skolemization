@@ -656,18 +656,24 @@ link made by a clause later subsumed is still a fact about the vocabulary.
 
 **The universes are never explained, only used.** Nothing prints a list of argument places: the
 *names* carry the sorts, because skolemization already chose them that way — `c` against `d`. The
-block opens with the witnesses, one line per universe, then says what is known about them under a
-bare heading of the names the facts are about (`c1, c2:` — there is no word to wrap around a list of
-names, and none is invented), and a fact mentioning several witnesses is stated once under all of
-them rather than repeated under each.
+witnesses get one line per universe, and what is known about them follows under a bare heading of
+the names the facts are about (`c1, c2:` — there is no word to wrap around a list of names, and none
+is invented), and a fact mentioning several witnesses is stated once under all of them rather than
+repeated under each.
 
-**What gets said is what the question does not already say.** Three kinds of thing, because those
-are the three a reader cannot get from the assumptions: a predicate that **never** or **always**
-holds (a one-literal clause over distinct variables); everything known about each **witness**,
-gathered onto its own line instead of scattered across a clause list; and whatever the **search
-added** that is neither. A surviving clause that is one of the assumptions' own clauses is dropped —
-`preprocess` reports which positions those are, so a restatement is recognised rather than guessed
-at. Saying them back to the reader is what made the first version unreadable.
+**What gets said is what the question does not already say.** Two kinds of thing, because those are
+the two a reader cannot get from the assumptions as they stand: a predicate that **never** or
+**always** holds (a one-literal clause over distinct variables), and everything known about each
+**witness**, gathered onto its own line instead of scattered across a clause list — and a witness is
+found however deeply it is buried, so a clause mentioning only `g(c)` is a fact about `c`. A
+surviving clause that is neither — no witness in it, and nothing universal to say — is not reported
+at all: it is a *general* fact, so it is a consequence of assumptions the reader is already holding,
+and it reads as news only because it is written as a clause. In the dogs example the two such
+clauses were the same fact twice — a dog does not betray its owner — printed differently only
+because the two clauses store their literals in opposite orders, which is as clear a statement as
+there is of what a list of derived clauses is: the search's history, not a description of the model.
+Saying the question back to the reader is what made the first version unreadable, and this is that
+argument carried as far as it goes.
 
 **Every fact is said as a formula, in every language** (`display.clause_as_formula`). A clause is a
 disjunction, but that is not how anyone states the fact it stands for: the negative literals are the

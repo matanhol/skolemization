@@ -31,7 +31,6 @@ when nothing is found it says so rather than implying there is no model.
 
 from itertools import product
 
-from .clauses import canonical_clause
 from .display import clause_as_formula
 from .sorts import (
     RESULT,
@@ -999,10 +998,18 @@ def _with(
 # ================================================================
 #
 # Not everything: the reader has the question.  What they cannot get from it is
-# which predicates never hold, what is known about each witness, and whatever
-# the search added on top.  The witnesses are named already -- skolemization
-# named them after their universes (steps/skolemize.py) -- so nothing here
-# renames anything.
+# which predicates never hold and what is known about each witness.  The
+# witnesses are named already -- skolemization named them after their universes
+# (steps/skolemize.py) -- so nothing here renames anything.
+#
+# There used to be a third kind, "what the search added": every surviving clause
+# naming no witness and saying nothing universal.  Those are general facts, so
+# they are consequences of assumptions the reader already has, and they read as
+# news only because they are written in clause form.  In the dogs example the
+# two of them were the same fact twice -- a dog does not betray its owner --
+# printed differently only because the two clauses store their literals in
+# opposite orders.  A list of derived clauses is the search's history, not a
+# description of the model, so such a clause is now simply not mentioned.
 #
 # Everything said is said as a **formula**.  Prose around a clause ("for every
 # y: B(c1, y) holds") is a second notation for something the reader has been
@@ -1072,32 +1079,26 @@ def witnesses_by_universe(
 
 def describe(
     clauses,
-    already_said=(),
     predicate_order=()
 ):
 
     """What is worth saying about the model, as lines ready to print.
 
-    Every value in the returned dict -- ``never``, ``always``, ``added``, and
-    each group's facts -- is a list of rendered formula lines, already in the
-    order they are to be read (see ``_line_order``).  A line may contain
-    newlines under ``config.TALL_BRACKETS``, exactly like ``formula_str``, so
-    the narration prints it with ``output.say_block``.
+    Every value in the returned dict -- ``never``, ``always``, and each group's
+    facts -- is a list of rendered formula lines, already in the order they are
+    to be read (see ``_line_order``).  A line may contain newlines under
+    ``config.TALL_BRACKETS``, exactly like ``formula_str``, so the narration
+    prints it with ``output.say_block``.
 
     Facts mentioning witnesses are grouped by *which* witnesses they mention,
     so a fact about two of them is stated once under both rather than repeated
     under each; the groups keep the order the witnesses were first met in.
-    ``already_said`` is the assumptions' own clauses: a survivor that is one of
-    them is the question restated.  ``predicate_order`` is the order the
-    predicates are first written in the problem, and is the last of the sort
-    keys.
+    A clause that names no witness and is not universal is not reported at all:
+    it is a general consequence of assumptions the reader already has, which
+    makes it the search's history rather than a description of the model.
+    ``predicate_order`` is the order the predicates are first written in the
+    problem, and is the last of the sort keys.
     """
-
-    said = {
-        canonical_clause(clause)
-        for clause
-        in already_said
-    }
 
     never = []
 
@@ -1106,8 +1107,6 @@ def describe(
     groups = {}
 
     order = []
-
-    added = []
 
     for clause in clauses:
 
@@ -1159,15 +1158,6 @@ def describe(
                 entry
             )
 
-            continue
-
-        if canonical_clause(clause) in said:
-            continue
-
-        added.append(
-            entry
-        )
-
     return {
         "never": _ordered_lines(never),
         "always": _ordered_lines(always),
@@ -1181,7 +1171,6 @@ def describe(
             for names
             in order
         ],
-        "added": _ordered_lines(added),
     }
 
 
