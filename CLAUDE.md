@@ -346,6 +346,15 @@ levels deep and keeps its plain left indentation, so do not go looking for the a
 of the level that its concluding line closes, not a level each: nesting them deeper says there is a
 block there to be entered and left, and there is not.
 
+**A line is one of three kinds, and only that decides where it goes** (`output.OPENS`, `ATTACHED`,
+`PLAIN`, imported by `narration.py` so there is one definition rather than two surviving on the
+namespace technicality). A line that **opens** a block carries the arrow. One **attached** to the
+label above it — a formula, or a sentence about that formula — *ends* where its label starts when
+the text is anchored on the right, so the two share a column; anchored on the left it has to sit
+*under* that label, which is one step in. The two directions nest opposite ways, and that is the
+whole of the difference between the two layouts: everything else is the same entries in the same
+order.
+
 **The direction marks cost a column each on the author's terminal**, which is the opposite of what a
 Unicode-correct implementation would assume. Established by printing the same four lines padded two
 ways: counting `RLI`, `PDI` and every `LRI` toward the width lines them up, ignoring them does not.

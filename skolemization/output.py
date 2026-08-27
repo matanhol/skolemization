@@ -279,9 +279,17 @@ def say_block(
 # there, but they start wherever their own length puts them, so the levels are
 # told apart by the step alone and not by a shared left edge as well.
 
-# The three kinds of line a nested block holds.  Repeated from narration.py
-# rather than imported: this module is below it, and the values are what cross
-# the boundary, not the names.
+# What kind of line an entry in a nested block is, which is all the layout
+# needs to know: a line that OPENS a block earns the arrow; one ATTACHED to the
+# label above it -- a formula, or a sentence about that formula -- ends where
+# its label starts when the text is anchored on the right, and steps one
+# further in when it is anchored on the left, because the two directions nest
+# opposite ways; anything else is PLAIN.
+#
+# Defined here, where the emitter that reads them is, and imported by
+# narration.py.  Two copies would survive the notebook's flattening only
+# because narration is reached through a qualifier and so gets a namespace of
+# its own -- a technicality to be relying on for three constants.
 
 OPENS = "opens"
 ATTACHED = "attached"

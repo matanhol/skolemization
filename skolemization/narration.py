@@ -36,6 +36,9 @@ from .inference import (
     PARAMODULATION,
 )
 from .output import (
+    ATTACHED,
+    OPENS,
+    PLAIN,
     ltr,
     say,
     say_block,
@@ -2237,18 +2240,6 @@ def _say_facts(
 # here as data rather than as a branch per reason, the way STRATEGY_KEY_NAMES
 # does.  A reason absent from it is one sentence and no formula.
 
-# What kind of line an entry in the check block is, which is all the emitter
-# needs to lay it out: a line that OPENS a block earns the arrow; one ATTACHED
-# to the label above it -- a formula, or a sentence about that formula -- ends
-# where its label starts when the text is anchored on the right, and steps one
-# further in when it is anchored on the left, because the two directions nest
-# opposite ways; anything else is PLAIN.
-
-OPENS = "opens"
-ATTACHED = "attached"
-PLAIN = "plain"
-
-
 REASON_PARTS = {
 
     "implication_fails":
@@ -2388,13 +2379,31 @@ def _reason_entries(
                         None
                     )
 
+                nested_entries = _reason_entries(
+                    nested,
+                    level + 1
+                    if steps_in
+                    else level
+                )
+
+                # A reason that did not step in is a sentence about the
+                # formula printed just above it, so it is attached to that
+                # formula rather than standing on its own: right-anchored
+                # they share a column either way, but left-anchored an
+                # attached line steps in under its formula and a plain one
+                # does not.
+                if not steps_in:
+
+                    nested_entries = [
+                        entry
+                        if entry is None
+                        else (entry[0], ATTACHED, entry[2])
+                        for entry
+                        in nested_entries
+                    ]
+
                 entries.extend(
-                    _reason_entries(
-                        nested,
-                        level + 1
-                        if steps_in
-                        else level
-                    )
+                    nested_entries
                 )
 
         conclusion = REASON_CONCLUSIONS.get(key)
