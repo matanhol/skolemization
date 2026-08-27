@@ -19,6 +19,10 @@ always belongs here.
 When you find a claim here that the code contradicts, fix the claim in that same change and say
 so — do not leave it for later.
 
+`AGENTS.md` is a **symlink to this file**, not a second copy. It was a copy once, and it fell six
+commits behind without anyone noticing — the failure mode this whole section is about, made
+inevitable by having two of something. Leave the symlink alone; write here.
+
 ## What this is
 
 An **educational** first-order-logic resolution prover. Its purpose is not speed or
@@ -44,6 +48,12 @@ subtask: does it need the output of an earlier one? Those form a cascade and run
 Everything else runs at the same time, one subagent per piece. Then ask the same question *inside*
 each subtask, recursively — a stage of a cascade is usually partitionable itself, and a serial chain
 of parallel fans is still parallel work.
+
+**And the recursion is not yours alone to perform.** An agent may fork subagents of its own, and so
+may they, all the way down: the piece handed to an agent is a task like any other, so the first
+thing it does is ask the same question of *its* parts. Say so when handing the work over — an agent
+that has not been told it may fan out will do its piece serially, and a fan-out one level deep is
+the same bottleneck with more steps. Parallelise everything that can be parallelised.
 
 Two examples of the shape:
 
