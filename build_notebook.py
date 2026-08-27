@@ -526,6 +526,87 @@ def module_style_imports(tree):
     return names
 
 
+def refuse_duplicate_names(modules, namespaces):
+
+    """Two modules defining the same top-level name cannot both survive.
+
+    Flattening puts every module in one namespace, so the second definition
+    silently replaces the first -- and the failure shows up as a call landing
+    in the wrong function, in the notebook only.  It has happened: ``sorts.py``
+    and ``signature.py`` both defined ``_walk_formula``, with different
+    signatures.
+
+    A name is allowed to repeat when the modules holding it are reached through
+    a qualifier, since each of those gets a namespace class of its own
+    (``hebrew.PHRASES`` and ``english.PHRASES`` do not collide).
+    """
+
+    defined = {}
+
+    for name, path in module_files().items():
+
+        tree = ast.parse(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
+        for node in tree.body:
+
+            if isinstance(
+                node,
+                (ast.FunctionDef, ast.ClassDef)
+            ):
+
+                targets = [node.name]
+
+            elif isinstance(node, ast.Assign):
+
+                targets = [
+                    target.id
+                    for target
+                    in node.targets
+                    if isinstance(target, ast.Name)
+                ]
+
+            else:
+                continue
+
+            for target in targets:
+
+                defined.setdefault(
+                    target,
+                    []
+                ).append(
+                    name.rsplit(".", 1)[-1]
+                )
+
+    clashes = []
+
+    for target, holders in defined.items():
+
+        unqualified = [
+            holder
+            for holder
+            in holders
+            if holder not in namespaces
+        ]
+
+        if len(holders) > 1 and len(unqualified) > 1:
+
+            clashes.append(
+                f"{target} ({', '.join(sorted(set(holders)))})"
+            )
+
+    if clashes:
+
+        raise ValueError(
+            "these names are defined in more than one module and would "
+            "collide once flattened: "
+            + "; ".join(sorted(clashes))
+        )
+
+
 def qualified_uses(modules):
 
     """Which attributes the package reaches for through a module qualifier.
@@ -807,6 +888,11 @@ def model_cell():
                 )
             }
         )
+    )
+
+    refuse_duplicate_names(
+        modules,
+        namespaces
     )
 
     for name, path in modules:

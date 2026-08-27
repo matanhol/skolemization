@@ -724,12 +724,6 @@ factoring של C{index}: """,
     """
 העדים:""",
 
-    "countermodel_witness":
-    "    {name} = {term}:",
-
-    "countermodel_witness_nothing":
-    "        אין עליו מידע נוסף.",
-
     "countermodel_added":
     """
 מה שהחיפוש הוסיף:""",
@@ -751,6 +745,9 @@ factoring של C{index}: """,
 
     "countermodel_fact_not":
     "לא {fact}",
+
+    "countermodel_about":
+    "על {witnesses}:",
 
 }
 

@@ -22,17 +22,17 @@ C1: P(c)
 
 C2: ¬P(z) ∨ ¬L(y, z) ∨ L(y, c)
 
-C3: ¬S(y) ∨ P(g1(y))
+C3: ¬S(y) ∨ P(g(y))
 
-C4: ¬S(y) ∨ L(y, g1(y))
+C4: ¬S(y) ∨ L(y, g(y))
 
-C5: ¬P(x) ∨ S(g2(x))
+C5: ¬P(x) ∨ S(h(x))
 
-C6: ¬P(x) ∨ ¬L(g2(x), x)
+C6: ¬P(x) ∨ ¬L(h(x), x)
 
 
-שווה לשים לב מאיפה מגיעות שתי פונקציות ה-Skolem: g1 מן ה-∃z שבתוך
-ההנחה השנייה, ו-g2 מן ה-∃ שנוצר כששוללים את המסקנה. שתיהן תלויות
+שווה לשים לב מאיפה מגיעות שתי פונקציות ה-Skolem: g מן ה-∃z שבתוך
+ההנחה השנייה, ו-h מן ה-∃ שנוצר כששוללים את המסקנה. שתיהן תלויות
 במשתנה אוניברסלי, ולכן הן פונקציות ולא קבועים.
 
 השאלה הזאת חוזרת ב-examples/recursion, שם היא מוצגת שוב עם דירוג
@@ -65,17 +65,17 @@ C1: P(c)
 
 C2: ¬P(z) ∨ ¬L(y, z) ∨ L(y, c)
 
-C3: ¬S(y) ∨ P(g1(y))
+C3: ¬S(y) ∨ P(g(y))
 
-C4: ¬S(y) ∨ L(y, g1(y))
+C4: ¬S(y) ∨ L(y, g(y))
 
-C5: ¬P(x) ∨ S(g2(x))
+C5: ¬P(x) ∨ S(h(x))
 
-C6: ¬P(x) ∨ ¬L(g2(x), x)
+C6: ¬P(x) ∨ ¬L(h(x), x)
 
 
-It is worth seeing where the two Skolem functions come from: g1 from
-the ∃z inside the second assumption, and g2 from the ∃ created when
+It is worth seeing where the two Skolem functions come from: g from
+the ∃z inside the second assumption, and h from the ∃ created when
 the conclusion is negated. Both depend on a universal variable, which
 is why they are functions and not constants.
 

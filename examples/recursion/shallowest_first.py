@@ -4,7 +4,7 @@ STRATEGY = "shallowest_general_first" מדרג קודם כל לפי כמה עמ�
 מקונן האיבר העמוק ביותר בתוצאה, ורק אחר כך לפי אורך הפסוקית, לפי
 "בלי הצבה" ולפי משקל.
 
-השרשרת מ-runaway פשוט אף פעם לא נבחרת: S(g2(g1(g2(c)))) עמוק יותר
+השרשרת מ-runaway פשוט אף פעם לא נבחרת: S(h(g(h(c)))) עמוק יותר
 מכל דבר אחר שזמין באותו רגע, ולכן הוא מחכה -- ומעולם לא מגיע תורו.
 
 6 צעדים, ואף איבר בהוכחה לא מקונן יותר מרמה אחת. אותה שאלה, אותו
@@ -21,7 +21,7 @@ STRATEGY = "shallowest_general_first" ranks first by how deeply the deepest
 term in the result nests, and only after that by clause length, by "needs no
 assignment", and by weight.
 
-The chain from runaway is simply never picked: S(g2(g1(g2(c)))) is deeper than
+The chain from runaway is simply never picked: S(h(g(h(c)))) is deeper than
 anything else on offer at that moment, so it waits -- and its turn never comes.
 
 6 steps, and no term in the proof nests more than one level. Same question,

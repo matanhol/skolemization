@@ -725,12 +725,6 @@ The clauses force a function to send an element to itself -- there was no choice
     """
 The witnesses:""",
 
-    "countermodel_witness":
-    "    {name} = {term}:",
-
-    "countermodel_witness_nothing":
-    "        nothing further is known about it.",
-
     "countermodel_added":
     """
 What the search added:""",
@@ -752,6 +746,9 @@ What the search added:""",
 
     "countermodel_fact_not":
     "not {fact}",
+
+    "countermodel_about":
+    "about {witnesses}:",
 
 }
 

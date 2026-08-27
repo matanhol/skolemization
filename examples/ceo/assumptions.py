@@ -24,9 +24,9 @@ exists x (T(x) and not S(x))
 
 אחרי ההצרנה ה-KB הוא:
 
-C1: S(c)
+C1: S(c1)
 
-C2: ¬S(y) ∨ y = c
+C2: ¬S(y) ∨ y = c1
 
 C3: T(c2)
 
@@ -47,8 +47,8 @@ EQUALITY_RULE = "paramodulation", והשאלה מזכירה את הסימן =, �
 השוויון -- סימטריה, טרנזיטיביות וקונגרואנציה -- לא נכתבות כאן
 בכלל: כלל ההיסק עושה את עבודתן.
 
-ה-Skolemization יצרה שלושה witnesses -- c, c2 ו-c3 -- ולכן שלב
-המיקוד מדולג. ההצבה x := c היא ניחוש בין שלושה עצמים שונים, ואין
+ה-Skolemization יצרה שלושה witnesses -- c1, c2 ו-c3 -- ולכן שלב
+המיקוד מדולג. ההצבה x := c1 היא ניחוש בין שלושה עצמים שונים, ואין
 סיבה להעדיף אחד מהם, כך שהחיפוש רץ ישר על ה-KB הכללי.
 """
 
@@ -80,9 +80,9 @@ be equal to each other, contradicting the fact that they differ.
 
 After clausification the KB is:
 
-C1: S(c)
+C1: S(c1)
 
-C2: ¬S(y) ∨ y = c
+C2: ¬S(y) ∨ y = c1
 
 C3: T(c2)
 
@@ -104,8 +104,8 @@ The remaining properties of equality -- symmetry, transitivity and
 congruence -- are not written here at all: the inference rule does
 their work.
 
-Skolemization produced three witnesses -- c, c2 and c3 -- so the
-witness-focus stage is skipped. The substitution x := c would be a
+Skolemization produced three witnesses -- c1, c2 and c3 -- so the
+witness-focus stage is skipped. The substitution x := c1 would be a
 guess between three different objects, and there is no reason to
 prefer any one of them, so the search runs straight on the general KB.
 """

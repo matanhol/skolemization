@@ -19,20 +19,20 @@ C1: P(c)
 
 C2: ¬P(z) ∨ ¬L(y, z) ∨ L(y, c)
 
-C3: ¬S(y) ∨ P(g1(y))
+C3: ¬S(y) ∨ P(g(y))
 
-C4: ¬S(y) ∨ L(y, g1(y))
+C4: ¬S(y) ∨ L(y, g(y))
 
-C5: ¬P(x) ∨ S(g2(x))
+C5: ¬P(x) ∨ S(h(x))
 
-C6: ¬P(x) ∨ ¬L(g2(x), x)
+C6: ¬P(x) ∨ ¬L(h(x), x)
 
 
-ושימו לב ל-C3 ול-C5 ביחד: מ-P משהו מקבלים S של g2 שלו, ומ-S משהו
-מקבלים P של g1 שלו. כלומר כל עובדה חדשה מייצרת עובדה חדשה עמוקה
+ושימו לב ל-C3 ול-C5 ביחד: מ-P משהו מקבלים S של h שלו, ומ-S משהו
+מקבלים P של g שלו. כלומר כל עובדה חדשה מייצרת עובדה חדשה עמוקה
 יותר, בלי סוף:
 
-P(c)  ⟶  S(g2(c))  ⟶  P(g1(g2(c)))  ⟶  S(g2(g1(g2(c))))  ⟶  ...
+P(c)  ⟶  S(h(c))  ⟶  P(g(h(c)))  ⟶  S(h(g(h(c))))  ⟶  ...
 
 כל אחת מהן היא clause באורך אחד, כללית, ובלי צורך בהצבה ממשית --
 כלומר כל מפתחות הדירוג האחרים אוהבים אותה. רק העומק מבדיל ביניהן.
@@ -71,20 +71,20 @@ C1: P(c)
 
 C2: ¬P(z) ∨ ¬L(y, z) ∨ L(y, c)
 
-C3: ¬S(y) ∨ P(g1(y))
+C3: ¬S(y) ∨ P(g(y))
 
-C4: ¬S(y) ∨ L(y, g1(y))
+C4: ¬S(y) ∨ L(y, g(y))
 
-C5: ¬P(x) ∨ S(g2(x))
+C5: ¬P(x) ∨ S(h(x))
 
-C6: ¬P(x) ∨ ¬L(g2(x), x)
+C6: ¬P(x) ∨ ¬L(h(x), x)
 
 
-Now look at C3 and C5 together: from P of something you get S of its g2, and
-from S of something you get P of its g1. So every new fact manufactures a new
+Now look at C3 and C5 together: from P of something you get S of its h, and
+from S of something you get P of its g. So every new fact manufactures a new
 fact one level deeper, without end:
 
-P(c)  ⟶  S(g2(c))  ⟶  P(g1(g2(c)))  ⟶  S(g2(g1(g2(c))))  ⟶  ...
+P(c)  ⟶  S(h(c))  ⟶  P(g(h(c)))  ⟶  S(h(g(h(c))))  ⟶  ...
 
 Each of these is a clause of length one, general, and needs no real
 assignment -- which is to say every other ranking key likes it. Only depth

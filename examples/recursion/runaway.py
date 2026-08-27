@@ -2,7 +2,7 @@
 
 STRATEGY = "shortest_general_first" -- קודם אורך הפסוקית, אחר כך
 "בלי הצבה", ורק אז משקל האיברים. אף אחד מהמפתחות האלה לא מבחין בין
-S(g2(c)) לבין S(g2(g1(g2(g1(g2(c)))))): שתיהן פסוקית באורך אחד.
+S(h(c)) לבין S(h(g(h(g(h(c)))))): שתיהן פסוקית באורך אחד.
 
 התוצאה: כל צעד מייצר את הדבר הבא בשרשרת, מעט יותר עמוק, לנצח.
 
@@ -17,7 +17,7 @@ COMMENTARY_EN = """1. The old ranking: the search runs away into nested terms.
 
 STRATEGY = "shortest_general_first" -- clause length first, then "needs no
 assignment", and only then term weight. Not one of those keys can tell
-S(g2(c)) from S(g2(g1(g2(g1(g2(c)))))): both are a clause of length one.
+S(h(c)) from S(h(g(h(g(h(c)))))): both are a clause of length one.
 
 The result: every step produces the next link in the chain, a little deeper,
 forever.

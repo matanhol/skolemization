@@ -39,7 +39,7 @@ Resolution step 4
 
 בוחרים:
 
-C2: ¬S(y) ∨ y = c
+C2: ¬S(y) ∨ y = c1
 C9: S(c3)
 
 הליטרלים שניתן להצליב:
@@ -56,7 +56,7 @@ C9: S(c3)
 הליטרלים זהים פרט לשלילה, ולכן מבטלים אותם.
 
 מתקבל:
-    c3 = c
+    c3 = c1
 ```
 
 Set `EXPLAIN_CHOICE` and each step also names the two candidates it beat and the ranking key that

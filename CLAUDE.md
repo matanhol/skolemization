@@ -265,6 +265,13 @@ raises and names the ones that exist.
 `grep -rlP '[\x{0590}-\x{05FF}]' skolemization/` should name only `phrases/hebrew.py` (and
 `output.py`, whose docstring illustrates the RTL rule).
 
+**No two modules may define the same top-level name.** Flattening puts them all in one namespace,
+so the second definition silently replaces the first and a call lands in the wrong function — in the
+notebook only. `build_notebook.refuse_duplicate_names` raises instead, and it exists because
+`sorts.py` and `signature.py` both defined `_walk_formula` with different signatures. A name may
+repeat only when the modules holding it are reached through a qualifier, since each of those gets a
+namespace class of its own (`hebrew.PHRASES` and `english.PHRASES` do not collide).
+
 **Logic never goes in an `__init__.py`.** `build_notebook.py` treats those files as re-exports and
 skips their bodies, so a function defined in one exists in the package and vanishes from the
 notebook — which is exactly how `phrases/lookup.py` came to be a module of its own.
@@ -431,12 +438,23 @@ never the parser. `formulas.atom_str` prints it infix (`x = y`, and `x ≠ y` fo
 literal). One interaction to remember: `Parser.starts_variable` had to learn about `=`, or
 `all y x = y` would read `x` as a third quantified variable.
 
-**Skolem names dodge the problem's vocabulary** (`steps/skolemize.py`). Constants are
-`c, c2, c3` and functions `g1, g2` *only when those families are free*. A letter is available
+**Skolem names say which universe a witness belongs to** (`steps/skolemize.py`, `sorts.py`).
+The sorts are inferred before step 4, and a witness takes the letter of its universe: **one witness
+in a universe gets the bare letter** (`c`), **several get numbers** (`c1, c2, c3`), a second
+universe gets the next free letter (`d`), and functions follow the same rule in the universe of what
+they *return* (`g`, or `g1, g2`). So `F(x, y)` relating two kinds of thing produces `c` and `d`
+rather than `c` and `c2`, and a reader can see at a glance that they are not comparable.
+
+"One or several" cannot be decided while inventing the first name, so `SkolemNames.plan` counts the
+existentials per universe first, over the NNF formulas. **Both step orders plan from the whole KB**:
+`ONE_FORMULA_AT_A_TIME` computes every formula's NNF up front, before walking the first one, or the
+two orders would name witnesses differently — which is the one thing that ordering is not allowed to
+change.
+
+The letter families are still chosen against the problem's own vocabulary. A letter is available
 only if no input name matches `^<letter>\d*$`, so writing `g` rules out `g1`, and writing `g1`
-rules out `g2` — the whole family is contaminated either way. Constants then fall back `c → d →
-e`, functions `g → h → i`, with the constant letter chosen first and marked occupied so the two
-can never collide. This exists because the collision was silent and produced *false positives*:
+rules out `g2` — the whole family is contaminated either way. Constants then walk `c → d → e`,
+functions `g → h → i`, each universe taking the next letter still free. This exists because the collision was silent and produced *false positives*:
 `all x exists y R(x,y)` plus `all x (R(x, g1(x)) -> Q(x))` used to prove `exists x Q(x)` purely
 because the user's `g1` and the invented `g1` were the same string.
 
@@ -472,8 +490,8 @@ clause ⇒ `PROVED`.
 raises rather than quietly behaving like `"shortest"`. The default
 `"shallowest_general_first"` is `"shortest_general_first"` with one key in front of it,
 `term_depth(result)` — how deeply the result's deepest term nests. Depth has to lead because
-nothing else stops a runaway: resolving `¬P(x) ∨ S(g2(x))` against `P(g1(g2(c)))` gives
-`S(g2(g1(g2(c))))`, which is short, general, assignment-free and therefore attractive to every
+nothing else stops a runaway: resolving `¬P(x) ∨ S(h(x))` against `P(g(h(c)))` gives
+`S(h(g(h(c))))`, which is short, general, assignment-free and therefore attractive to every
 other key — and it is the parent of a deeper one, forever. Measured in `examples/recursion`:
 without the depth key the search is carrying terms nested a hundred deep by step 150 and never
 finishes, with it the proof takes 6 steps and nothing nests past 1. It is not free — the equality
@@ -484,14 +502,14 @@ under the default and pins `"shortest_general_first"` itself, which proves it in
 `(len(result), is_paramodulation, needs_assignment, term_weight(result), parent_size)` — among
 equally short resolvents it prefers a resolution or a factor over a rewrite, and then the pair that
 matches as it stands over one that has to bind variables, so `P(c) ∨ B(x,y)` resolves against
-`¬P(c)` rather than `¬B(c, g1(c))` and the derived clause stays general instead of being about one
+`¬P(c)` rather than `¬B(c, g(c))` and the derived clause stays general instead of being about one
 object. The rule key is there because paramodulation fires at every non-variable subterm in both
 directions and is by far the most prolific of the three: on a tie the cheaper rule is the one to
 spend the step on, and it is the one a reader expects — the CEO example now derives `c2 = c` and
 `c3 = c` before it starts rewriting with them. Measured when it was added: no example changes
 status or step count. The third key is there for equality: an
-equation can be used either way round, so `c = g1(c)` turns `P(g1(c))` into `P(c)` *or* into
-`P(g1(g1(c)))`, both one literal long — `ordering.weight` picks the smaller term, the same
+equation can be used either way round, so `c = g(c)` turns `P(g(c))` into `P(c)` *or* into
+`P(g(g(c)))`, both one literal long — `ordering.weight` picks the smaller term, the same
 direction `"superposition"` enforces outright. Measured when it was added: no example changes
 status or step count; only which of several tied candidates wins. "Needs assignment" is
 `resolution.meaningful_substitutions` being non-empty — the same test the narration uses, so a
@@ -613,16 +631,17 @@ completeness has a second half: a clause set saturated under a complete calculus
 description of it, and the pass says so in the vocabulary of the problem.
 
 **The universes are inferred, not assumed.** A union-find over argument positions — `(P, 1)`,
-`(g1, result)` — merged whenever the same variable or the same term is written in two of them. So
+`(g, result)` — merged whenever the same variable or the same term is written in two of them. So
 `D(x)` with `F(x, y)` puts `D·1` and `F·1` in one universe, `F(x, y)` keeps its two places apart
 unless something links them, and a Skolem term written into `F`'s second place belongs *there*, not
 with the constant it was built from. Inference runs over the clauses **as they entered**, since a
 link made by a clause later subsumed is still a fact about the vocabulary.
 
 **The universes are never explained, only used.** Nothing prints a list of argument places: the
-*symbols* carry the sorts — `a1` against `b1` for witnesses, `x` against `y` for variables, one
-letter per universe. Universals stay universal (`for every y: always B(a1, y)`), only ground terms
-are named, and no witness is invented that the clauses do not force.
+*names* carry the sorts, because skolemization already chose them that way — `c` against `d`. The
+block opens with the witnesses, one line per universe, then says what is known about them.
+Universals stay universal (`for every y: always B(c1, y)`), and a fact mentioning several witnesses
+is stated once under all of them rather than repeated under each.
 
 **What gets said is what the question does not already say.** Three kinds of thing, because those
 are the three a reader cannot get from the assumptions: a predicate that **never** or **always**
@@ -635,7 +654,8 @@ at. Saying them back to the reader is what made the first version unreadable.
 **A finite model is built and never printed.** `finite_model` searches domain sizes with DPLL over
 the ground instances; it is the proof that the description is satisfiable rather than merely
 plausible, and it is what the explanations point at when they name a witness. It prefers separate
-witnesses and `f(a) ≠ a` over a smaller domain, because `g1(e1) = e1` reads as "the owner of x is x".
+witnesses and `f(a) ≠ a` over a smaller domain, because a function sending an element to itself
+reads as "the owner of x is x".
 
 **Every assumption is explained, and a `∀` never by example.** `why` returns a structured reason:
 vacuous (naming the condition nothing satisfies — checked over *all* the ∀-bound variables, not just
@@ -726,8 +746,8 @@ Two measurements worth keeping: adding **reflexivity** to `with_congruence` stop
 at 400 steps — `Eq(x,x)` unifies with almost every equality and floods the search — and the
 congruence axiom there is written for `K` alone, so the reader has to know in advance which
 predicate the proof will need to move. One more argument for the rule, visible in any transcript:
-`c = g1(c)` and `g1(c) ≠ c` are a contradiction that plain resolution cannot close, because the
-atoms `=(c, g1(c))` and `=(g1(c), c)` do not unify — it takes a symmetry axiom, or one rewrite.
+`c = g(c)` and `g(c) ≠ c` are a contradiction that plain resolution cannot close, because the
+atoms `=(c, g(c))` and `=(g(c), c)` do not unify — it takes a symmetry axiom, or one rewrite.
 
 **Factoring is what makes the calculus complete** (`factoring.py`). Binary resolution yields
 `|C1| + |C2| - 2` literals, so two 2-literal parents produce 2-literal resolvents forever and
@@ -761,8 +781,8 @@ file claimed. Substituting `x := witness` is universal instantiation, so a `PROV
 focused pass is a real proof; only a negative from it is meaningless. It guesses, so it declines
 to guess in the two places where the guess is baseless:
 
-- **More than one witness ⇒ no focused pass at all** (`prover._try_focusing`). With `c`, `c2`,
-  `c3` all standing for "something that exists", `x := c` is a coin toss between them, so the
+- **More than one witness ⇒ no focused pass at all** (`prover._try_focusing`). With `c1`, `c2`,
+  `c3` all standing for "something that exists", `x := c1` is a coin toss between them, so the
   prover narrates the skip and goes to the general search. `SkolemNames.witnesses` reports what
   was invented; `Preprocessed.witnesses` passes it on. `owner_never_betrayed(_variant)` (3
   witnesses) and both equivalence directions (2 and 5) take this path, and still return what they

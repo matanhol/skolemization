@@ -12,13 +12,12 @@ from .focus import (
 from .preprocessing import preprocess
 from .counterexample import (
     LARGEST_DOMAIN,
-    Naming,
     describe,
     finite_model,
-    sorts_of,
     why,
-    witness_elements,
+    witnesses_by_universe,
 )
+from .sorts import sorts_of_clauses
 from .search import run_resolution_search
 
 
@@ -159,18 +158,12 @@ def _build_countermodel(
     # The finite model is never printed.  It is the proof that what follows is
     # satisfiable rather than merely plausible; what the reader gets is the
     # description, with the universals left standing.
-    sorts = sorts_of(
+    sorts = sorts_of_clauses(
         prepared.clauses
     )
 
-    naming = Naming(
-        sorts,
-        final_kb
-    )
-
-    elements = witness_elements(
+    elements = _witness_elements(
         model,
-        naming,
         final_kb
     )
 
@@ -197,9 +190,12 @@ def _build_countermodel(
     )
 
     narration.countermodel(
+        witnesses_by_universe(
+            final_kb,
+            sorts
+        ),
         describe(
             final_kb,
-            naming,
             [
                 clause
                 for position, clause
@@ -214,6 +210,39 @@ def _build_countermodel(
             in checks
         )
     )
+
+
+def _witness_elements(
+    model,
+    clauses
+):
+
+    """Which domain element each Skolem constant denotes.
+
+    The finite model is never printed -- it is the proof that the description
+    is satisfiable -- but an explanation that points at an element points at it
+    by the name the reader already has.
+    """
+
+    names = {}
+
+    for clause in clauses:
+
+        for literal in clause:
+
+            for argument in literal.atom.args:
+
+                if argument.is_var or argument.args:
+                    continue
+
+                names.setdefault(
+                    model.constants.get(
+                        argument.name
+                    ),
+                    argument.name
+                )
+
+    return names
 
 
 def _checked(

@@ -2000,6 +2000,7 @@ def unit_sweep_nothing():
 # ================================================================
 
 def countermodel(
+    universes,
     description,
     checks,
     holds
@@ -2056,29 +2057,32 @@ def countermodel(
             )
         )
 
-    if description["witnesses"]:
+    if universes:
 
         say(
             phrase("countermodel_witnesses_header")
         )
 
-    for name, term, facts in description["witnesses"]:
-
-        say(
-            phrase(
-                "countermodel_witness",
-                name=ltr(name),
-                term=ltr(term)
-            )
-        )
-
-        if not facts:
+        for names in universes:
 
             say(
-                phrase("countermodel_witness_nothing")
+                "    "
+                + ltr(
+                    ", ".join(names)
+                )
             )
 
-            continue
+    for names, facts in description["groups"]:
+
+        say(
+            "\n"
+            + phrase(
+                "countermodel_about",
+                witnesses=ltr(
+                    ", ".join(names)
+                )
+            )
+        )
 
         for statement in facts:
 

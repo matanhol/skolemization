@@ -23,6 +23,10 @@ from .steps.cnf import to_cnf
 from .steps.forall import remove_forall
 from .steps.implications import remove_implications
 from .steps.nnf import to_nnf
+from .sorts import (
+    sorts_of_formulas,
+    variable_universes,
+)
 from .steps.skolemize import (
     SkolemNames,
     skolemize,
@@ -148,10 +152,20 @@ def preprocess(
         )
     )
 
+    universes = sorts_of_formulas(
+        nnf
+    )
+
+    names.plan(
+        nnf,
+        universes
+    )
+
     skolemized = (
         _skolemization_step(
             nnf,
-            names
+            names,
+            universes
         )
     )
 
@@ -332,7 +346,8 @@ def _mapped_step(
 
 def _skolemization_step(
     formulas,
-    names
+    names,
+    universes
 ):
 
     """Step 4, which explains each witness between the before and the after.
@@ -358,7 +373,11 @@ def _skolemization_step(
             skolemize(
                 formula,
                 names,
-                explanations=explanations
+                explanations=explanations,
+                universes=variable_universes(
+                    formula,
+                    universes
+                )
             )
         )
 
@@ -409,6 +428,31 @@ def _walk_each_formula(
 
     conclusion_clauses = set()
 
+    # The witnesses have to be named the same way in both orders, and naming
+    # them needs the whole KB: which universes there are, and how many
+    # witnesses each will want.  So the NNF of every formula is computed up
+    # front -- pure functions, no narration -- and only then does the walk
+    # begin.  Without this the first formula would be skolemized before the
+    # last one had been looked at, and the two orders would drift apart.
+    upcoming = [
+        to_nnf(
+            remove_implications(
+                formula
+            )
+        )
+        for formula
+        in formulas
+    ]
+
+    universes = sorts_of_formulas(
+        upcoming
+    )
+
+    names.plan(
+        upcoming,
+        universes
+    )
+
     for i, formula in enumerate(
         formulas,
         1
@@ -440,7 +484,8 @@ def _walk_each_formula(
         current = (
             _walk_skolem_step(
                 current,
-                names
+                names,
+                universes
             )
         )
 
@@ -568,7 +613,8 @@ def _walk_step(
 
 def _walk_skolem_step(
     formula,
-    names
+    names,
+    universes
 ):
 
     """Step 4 of one formula's walk, explaining each witness it invents."""
@@ -583,7 +629,11 @@ def _walk_skolem_step(
         skolemize(
             formula,
             names,
-            explanations=explanations
+            explanations=explanations,
+            universes=variable_universes(
+                formula,
+                universes
+            )
         )
     )
 

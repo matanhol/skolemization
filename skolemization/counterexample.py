@@ -32,8 +32,16 @@ when nothing is found it says so rather than implying there is no model.
 from itertools import product
 
 from .clauses import canonical_clause
+from .sorts import (
+    RESULT,
+    is_ground,
+    position_label,
+    sorts_of_clauses,
+    term_key,
+)
 from .formulas import (
     And,
+    Literal,
     Atom,
     Exists,
     ForAll,
@@ -987,99 +995,32 @@ def _with(
 
 
 # ================================================================
-# SORTS
+# WHAT TO SAY ABOUT THE MODEL
 # ================================================================
 #
-# A counter-model reads badly when everything is thrown into one universe:
-# F(x, y) relates two different kinds of thing, and g1(c) -- sitting in F's
-# second place -- is not the same kind of thing as c.  So the argument
-# positions are sorted first, and everything after that is said per universe.
-#
-# The rule is the only one there is: two positions are the same sort when
-# something occurs in both.  A variable shared between D(x) and F(x, y) merges
-# D·1 with F·1; a term occurring in two places merges those; a function's
-# result belongs to whatever position it is written into.  Positions never
-# linked stay apart, which is what keeps F(x, y) two universes by default.
+# Not everything: the reader has the question.  What they cannot get from it is
+# which predicates never hold, what is known about each witness, and whatever
+# the search added on top.  The witnesses are named already -- skolemization
+# named them after their universes (steps/skolemize.py) -- so nothing here
+# renames anything.
 
 
-RESULT = "result"
+def witnesses_by_universe(
+    clauses,
+    sorts
+):
 
+    """The Skolem constants of these clauses, grouped by universe.
 
-class Sorts:
-
-    """Argument positions, merged into universes -- a union-find."""
-
-    def __init__(self):
-
-        self.parent = {}
-
-    def find(self, node):
-
-        """The universe a position belongs to."""
-
-        self.parent.setdefault(
-            node,
-            node
-        )
-
-        while self.parent[node] != node:
-
-            self.parent[node] = self.parent[
-                self.parent[node]
-            ]
-
-            node = self.parent[node]
-
-        return node
-
-    def merge(self, one, other):
-
-        """Say that these two positions hold the same kind of thing."""
-
-        one = self.find(one)
-
-        other = self.find(other)
-
-        if one != other:
-
-            self.parent[other] = one
-
-    def universes(self):
-
-        """Every universe, as a map from its representative to its positions."""
-
-        grouped = {}
-
-        for node in self.parent:
-
-            grouped.setdefault(
-                self.find(node),
-                []
-            ).append(
-                node
-            )
-
-        return {
-            root: sorted(members)
-            for root, members
-            in grouped.items()
-        }
-
-
-def sorts_of(clauses):
-
-    """Infer the universes from where each variable and term is written.
-
-    Runs over the clauses *as they entered the search*, not only the survivors:
-    a link made by a clause that was later subsumed is still a fact about the
-    vocabulary.
+    One line per universe is all the reader needs: the names carry the sorting,
+    since ``c`` and ``d`` were chosen to say exactly that.
     """
 
-    sorts = Sorts()
+    grouped = {}
+
+    order = []
 
     for clause in clauses:
-
-        occurrences = {}
 
         for literal in clause:
 
@@ -1087,391 +1028,45 @@ def sorts_of(clauses):
                 literal.atom.args
             ):
 
-                _place_term(
-                    argument,
-                    (literal.atom.pred, index),
-                    sorts,
-                    occurrences
+                if argument.is_var or argument.args:
+                    continue
+
+                universe = sorts.find(
+                    (literal.atom.pred, index)
                 )
 
-        for places in occurrences.values():
+                if universe not in grouped:
 
-            for other in places[1:]:
+                    grouped[universe] = []
 
-                sorts.merge(
-                    places[0],
-                    other
-                )
-
-    return sorts
-
-
-def _place_term(
-    term,
-    position,
-    sorts,
-    occurrences
-):
-
-    """Record that ``term`` is written at ``position``, and recurse into it."""
-
-    sorts.find(
-        position
-    )
-
-    key = (
-        term.name
-        if term.is_var
-        else _term_key(term)
-    )
-
-    occurrences.setdefault(
-        key,
-        []
-    ).append(
-        position
-    )
-
-    if term.is_var:
-        return
-
-    if term.args:
-
-        # The function's result is whatever this position holds; its arguments
-        # are sorted by their own places in it.
-        sorts.merge(
-            position,
-            (term.name, RESULT)
-        )
-
-        for index, argument in enumerate(
-            term.args
-        ):
-
-            _place_term(
-                argument,
-                (term.name, index),
-                sorts,
-                occurrences
-            )
-
-
-def _term_key(term):
-
-    """A term as a hashable key -- ``g1(c)`` and ``g1(c)`` are the same thing."""
-
-    if not term.args:
-        return term.name
-
-    return (
-        term.name,
-        tuple(
-            _term_key(argument)
-            for argument
-            in term.args
-        )
-    )
-
-
-# ================================================================
-# NAMING AND DESCRIBING
-# ================================================================
-
-LETTERS = "ABCDEFGH"
-
-
-class Naming:
-
-    """Which universe each position belongs to, and what the witnesses are called.
-
-    A universe gets a letter in order of first appearance; a witness gets that
-    letter in lower case and a number, in its **own** universe.  So the Skolem
-    term ``g1(c)``, written into ``F``'s second place, is ``b1`` -- not another
-    ``a``, which is the whole point of sorting the positions first.
-    """
-
-    def __init__(
-        self,
-        sorts,
-        clauses
-    ):
-
-        self.sorts = sorts
-
-        self.letters = {}
-
-        self.witnesses = []
-
-        self._names = {}
-
-        self._collect(
-            clauses
-        )
-
-    def letter_for(
-        self,
-        position
-    ):
-
-        """The universe a position belongs to, as a letter."""
-
-        root = self.sorts.find(
-            position
-        )
-
-        if root not in self.letters:
-
-            self.letters[root] = LETTERS[
-                len(self.letters)
-                %
-                len(LETTERS)
-            ]
-
-        return self.letters[
-            root
-        ]
-
-    def name_of(
-        self,
-        term
-    ):
-
-        """What this ground term is called, or None if it is not a witness."""
-
-        return self._names.get(
-            _term_key(term)
-        )
-
-    def _collect(
-        self,
-        clauses
-    ):
-
-        """Name every ground term, in the universe it is written into."""
-
-        counts = {}
-
-        # Letters first, in the order the positions are written, so universe A
-        # is the one the reader meets first rather than whichever happened to
-        # hold the first ground term.
-        for clause in clauses:
-
-            for literal in clause:
-
-                for index, argument in enumerate(
-                    literal.atom.args
-                ):
-
-                    self._walk_positions(
-                        argument,
-                        (literal.atom.pred, index)
+                    order.append(
+                        universe
                     )
 
-        for clause in clauses:
+                if argument.name not in grouped[universe]:
 
-            for literal in clause:
-
-                for index, argument in enumerate(
-                    literal.atom.args
-                ):
-
-                    self._name_term(
-                        argument,
-                        (literal.atom.pred, index),
-                        counts
+                    grouped[universe].append(
+                        argument.name
                     )
 
-    def _walk_positions(
-        self,
-        term,
-        position
-    ):
-
-        """Give every position a letter, in the order it appears."""
-
-        self.letter_for(
-            position
-        )
-
-        if term.is_var:
-            return
-
-        for index, argument in enumerate(
-            term.args
-        ):
-
-            self._walk_positions(
-                argument,
-                (term.name, index)
-            )
-
-    def _name_term(
-        self,
-        term,
-        position,
-        counts
-    ):
-
-        """Give a ground term a name in its universe, once."""
-
-        if term.is_var:
-            return
-
-        for index, argument in enumerate(
-            term.args
-        ):
-
-            self._name_term(
-                argument,
-                (term.name, index),
-                counts
-            )
-
-        if not _is_ground(term):
-
-            # g1(x) is not a witness -- it is a function of whatever x is.  Only
-            # closed terms name an element of a universe.
-            return
-
-        key = _term_key(
-            term
-        )
-
-        if key in self._names:
-            return
-
-        letter = self.letter_for(
-            position
-        )
-
-        counts[letter] = counts.get(
-            letter,
-            0
-        ) + 1
-
-        name = f"{letter.lower()}{counts[letter]}"
-
-        self._names[key] = name
-
-        self.witnesses.append(
-            (
-                name,
-                letter,
-                self._render_term(
-                    term
-                )
-            )
-        )
-
-    def _render_term(
-        self,
-        term
-    ):
-
-        """A term with its inner witnesses already named: ``g1(a1)``."""
-
-        if not term.args:
-            return term.name
-
-        return (
-            term.name
-            + "("
-            + ", ".join(
-                self.name_of(argument)
-                or
-                self._render_term(argument)
-                for argument
-                in term.args
-            )
-            + ")"
-        )
-
-    def universes(self):
-
-        """Each universe: its letter, the positions in it, and its witnesses."""
-
-        listed = []
-
-        for root, members in self.sorts.universes().items():
-
-            letter = self.letter_for(
-                members[0]
-            )
-
-            listed.append(
-                (
-                    letter,
-                    [
-                        _position_label(position)
-                        for position
-                        in members
-                    ],
-                    [
-                        (name, term)
-                        for name, where, term
-                        in self.witnesses
-                        if where == letter
-                    ]
-                )
-            )
-
-        return sorted(
-            listed
-        )
-
-
-def _is_ground(term):
-
-    """Does this term mention no variable at all?"""
-
-    if term.is_var:
-        return False
-
-    return all(
-        _is_ground(argument)
-        for argument
-        in term.args
-    )
-
-
-def _position_label(position):
-
-    """``P·1`` for an argument place, ``g1·→`` for a function's result."""
-
-    symbol, index = position
-
-    if index == RESULT:
-        return f"{symbol}·→"
-
-    return f"{symbol}·{index + 1}"
-
-
-# Variable letters, one per universe: a variable's name is what says which
-# universe it runs over, so nothing has to be annotated with "∈ A".
-
-VARIABLE_LETTERS = "xyzuvw"
+    return [
+        grouped[universe]
+        for universe
+        in order
+    ]
 
 
 def describe(
     clauses,
-    naming,
     already_said=()
 ):
 
     """What is worth saying about the model, and nothing else.
 
-    Three kinds of thing come out, because those are the three a reader cannot
-    get from the question itself:
-
-    * a predicate that **never** holds, or **always** does -- a one-literal
-      clause over distinct variables;
-    * everything known about each **witness**, gathered onto its own line
-      rather than scattered over the clause list;
-    * whatever the **search added** that is neither of those.
-
-    ``already_said`` is the assumptions' own clauses as they entered.  A
-    surviving clause that is one of them is the question restated, and saying
-    it back to the reader is what made the earlier version unreadable.
+    Facts mentioning witnesses are grouped by *which* witnesses they mention,
+    so a fact about two of them is stated once under both rather than repeated
+    under each.  ``already_said`` is the assumptions' own clauses: a survivor
+    that is one of them is the question restated.
     """
 
     said = {
@@ -1484,7 +1079,9 @@ def describe(
 
     always = []
 
-    facts = {}
+    groups = {}
+
+    order = []
 
     added = []
 
@@ -1508,26 +1105,29 @@ def describe(
 
             continue
 
-        statement = _statement(
-            clause,
-            naming
+        mentioned = tuple(
+            _constants_in(
+                clause
+            )
         )
 
-        mentioned = _witnesses_in(
-            clause,
-            naming
+        statement = _statement(
+            clause
         )
 
         if mentioned:
 
-            for name in mentioned:
+            if mentioned not in groups:
 
-                facts.setdefault(
-                    name,
-                    []
-                ).append(
-                    statement
+                groups[mentioned] = []
+
+                order.append(
+                    mentioned
                 )
+
+            groups[mentioned].append(
+                statement
+            )
 
             continue
 
@@ -1541,14 +1141,13 @@ def describe(
     return {
         "never": never,
         "always": always,
-        "witnesses": [
+        "groups": [
             (
-                name,
-                term,
-                facts.get(name, [])
+                list(names),
+                groups[names]
             )
-            for name, _, term
-            in naming.witnesses
+            for names
+            in order
         ],
         "added": added,
     }
@@ -1561,8 +1160,8 @@ def _universal_unit(
     """``(predicate, negated)`` when the clause says a predicate never or always holds.
 
     One literal, every argument a distinct variable: ``¬D(x)`` is "nothing is a
-    D", ``P(x, y)`` is "P holds of every pair".  Anything mentioning a term is
-    about particular elements and belongs to a witness instead.
+    D", ``P(x, y)`` is "P holds of every pair".  Anything mentioning a witness
+    is about particular elements and belongs with them instead.
     """
 
     if len(clause) != 1:
@@ -1596,26 +1195,28 @@ def _universal_unit(
     )
 
 
-def _witnesses_in(
-    clause,
-    naming
+def _constants_in(
+    clause
 ):
 
-    """Every named witness the clause mentions, in order."""
+    """Every Skolem constant the clause mentions, in order of appearance."""
 
     found = []
 
     def walk(term):
 
-        name = naming.name_of(
-            term
-        )
+        if term.is_var:
+            return
 
-        if name is not None and name not in found:
+        if not term.args:
 
-            found.append(
-                name
-            )
+            if term.name not in found:
+
+                found.append(
+                    term.name
+                )
+
+            return
 
         for argument in term.args:
 
@@ -1635,31 +1236,23 @@ def _witnesses_in(
 
 
 def _statement(
-    clause,
-    naming
+    clause
 ):
 
     """One clause as ``(variables, conditions, consequences)`` for the narration."""
 
-    renaming = _variable_names(
-        clause,
-        naming
-    )
-
     return {
-        "variables": sorted(
-            set(
-                renaming.values()
-            )
+        "variables": variables_of(
+            clause
         ),
         "conditions": [
-            _render_literal(literal, naming, renaming)
+            _render(literal)
             for literal
             in clause
             if literal.negated
         ],
         "consequences": [
-            _render_literal(literal, naming, renaming)
+            _render(literal)
             for literal
             in clause
             if not literal.negated
@@ -1667,211 +1260,13 @@ def _statement(
     }
 
 
-def _variable_names(
-    clause,
-    naming
-):
+def _render(literal):
 
-    """Rename the clause's variables so the letter says which universe.
+    """The literal as it stands -- the names are already the right ones."""
 
-    ``x`` for the first universe, ``y`` for the second, and a number when one
-    clause needs two variables from the same one.
-    """
-
-    renaming = {}
-
-    counts = {}
-
-    for literal in clause:
-
-        for index, argument in enumerate(
-            literal.atom.args
-        ):
-
-            _name_variables(
-                argument,
-                (literal.atom.pred, index),
-                naming,
-                renaming,
-                counts
-            )
-
-    return renaming
-
-
-def _name_variables(
-    term,
-    position,
-    naming,
-    renaming,
-    counts
-):
-
-    """Give every variable a letter belonging to its universe."""
-
-    if term.is_var:
-
-        if term.name in renaming:
-            return
-
-        letter = naming.letter_for(
-            position
+    return str(
+        Literal(
+            literal.atom,
+            False
         )
-
-        index = LETTERS.index(
-            letter
-        ) % len(VARIABLE_LETTERS)
-
-        counts[letter] = counts.get(
-            letter,
-            0
-        ) + 1
-
-        renaming[term.name] = (
-            VARIABLE_LETTERS[index]
-            if counts[letter] == 1
-            else f"{VARIABLE_LETTERS[index]}{counts[letter]}"
-        )
-
-        return
-
-    for index, argument in enumerate(
-        term.args
-    ):
-
-        _name_variables(
-            argument,
-            (term.name, index),
-            naming,
-            renaming,
-            counts
-        )
-
-
-def _render_literal(
-    literal,
-    naming,
-    renaming
-):
-
-    """``B(a1, y)`` -- witnesses by name, variables by their universe's letter."""
-
-    return (
-        literal.atom.pred
-        + "("
-        + ", ".join(
-            _render_argument(argument, naming, renaming)
-            for argument
-            in literal.atom.args
-        )
-        + ")"
-    )
-
-
-def _render_argument(
-    term,
-    naming,
-    renaming
-):
-
-    """One argument: a witness name, a renamed variable, or a term of those."""
-
-    if term.is_var:
-
-        return renaming.get(
-            term.name,
-            term.name
-        )
-
-    name = naming.name_of(
-        term
-    )
-
-    if name is not None:
-        return name
-
-    return (
-        term.name
-        + "("
-        + ", ".join(
-            _render_argument(argument, naming, renaming)
-            for argument
-            in term.args
-        )
-        + ")"
-    )
-
-
-def witness_elements(
-    model,
-    naming,
-    clauses
-):
-
-    """Which domain element each named witness denotes, for the explanations.
-
-    The finite model is not printed -- it is the proof that the description is
-    satisfiable -- but when an explanation wants to point at a witness, this is
-    what turns the model's element back into the name the reader has been given.
-    """
-
-    names = {}
-
-    for clause in clauses:
-
-        for literal in clause:
-
-            for argument in literal.atom.args:
-
-                _element_of(
-                    argument,
-                    model,
-                    naming,
-                    names
-                )
-
-    return names
-
-
-def _element_of(
-    term,
-    model,
-    naming,
-    names
-):
-
-    """Record the element a ground term denotes, and recurse into it."""
-
-    if term.is_var:
-        return
-
-    for argument in term.args:
-
-        _element_of(
-            argument,
-            model,
-            naming,
-            names
-        )
-
-    name = naming.name_of(
-        term
-    )
-
-    if name is None:
-        return
-
-    try:
-
-        element = model.value_of(
-            term,
-            {}
-        )
-
-    except KeyError:
-        return
-
-    names.setdefault(
-        element,
-        name
     )
