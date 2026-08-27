@@ -649,17 +649,23 @@ factoring של C{index}: """,
     """
 בדיקה של המודל מול השאלה המקורית:""",
 
+    "countermodel_assumption":
+    "הנחה {number}:",
+
+    "countermodel_conclusion":
+    "מסקנה:",
+
     "countermodel_assumption_true":
-    "    ההנחה מתקיימת:",
+    "✓ מתקיימת במודל.",
 
     "countermodel_assumption_false":
-    "    ⚠️ ההנחה אינה מתקיימת -- וזה לא אמור לקרות:",
+    "⚠️ אינה מתקיימת במודל -- וזה לא אמור לקרות.",
 
     "countermodel_conclusion_false":
-    "    המסקנה אינה מתקיימת:",
+    "✗ אינה מתקיימת במודל.",
 
     "countermodel_conclusion_true":
-    "    ⚠️ המסקנה מתקיימת -- וזה לא אמור לקרות:",
+    "⚠️ מתקיימת במודל -- וזה לא אמור לקרות.",
 
     "countermodel_verdict":
     """
@@ -680,7 +686,7 @@ factoring של C{index}: """,
 אינה מעידה על ספיקות.""",
 
     "reason_vacuous_universal":
-    "ריקנית: אין במודל איבר שמקיים את",
+    "ריקנית: אין במודל איבר שמקיים את התנאי:",
 
     "reason_universal_holds":
     "מתקיים עבור כל איברי התחום.",
@@ -692,19 +698,37 @@ factoring של C{index}: """,
     "העד הוא {element}.",
 
     "reason_no_witness":
-    "אין במודל איבר שמקיים את זה.",
-
-    "reason_vacuous_implication":
-    "ריקנית: הצד השמאלי אינו מתקיים במודל --",
-
-    "reason_implication_holds":
-    "הצד הימני מתקיים במודל --",
-
-    "reason_implication_fails":
-    "הצד השמאלי מתקיים אבל הימני לא --",
+    "אין במודל איבר שמקיים אותו.",
 
     "reason_plainly":
     "כך זה יוצא במודל.",
+
+    "reason_universal_fails_because":
+    "לא מתקיים עבור {element}:",
+
+    "reason_witnessed_because":
+    "העד הוא {element}:",
+
+    "reason_condition_holds":
+    "הצד השמאלי מתקיים:",
+
+    "reason_condition_fails":
+    "הצד השמאלי אינו מתקיים:",
+
+    "reason_consequent_holds":
+    "הצד הימני מתקיים:",
+
+    "reason_consequent_fails":
+    "אבל הצד הימני אינו מתקיים:",
+
+    "reason_therefore_vacuous":
+    "ולכן הגרירה מתקיימת ריקנית.",
+
+    "reason_therefore_holds":
+    "ולכן הגרירה מתקיימת.",
+
+    "reason_therefore_fails":
+    "ולכן הגרירה אינה מתקיימת.",
 
     "countermodel_gave_up_separate_witnesses":
     """

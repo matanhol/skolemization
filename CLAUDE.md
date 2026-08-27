@@ -717,6 +717,35 @@ failure. The assumptions must come out true and the conclusion false; a wrong ve
 with a ⚠️ rather than smoothed over, since it would mean the model, the saturation or the evaluator
 is broken.
 
+**The formula comes first and the verdict after it, and every part of a reason is label → formula →
+why** (`narration.countermodel`, `_say_reason`). A verdict about something the reader has not been
+shown yet is not a verdict to them, so an entry opens with its heading — the assumptions numbered,
+`assumption 1:` (`countermodel_assumption`), the relation axioms `axioms.py` generated numbered
+among them since `Preprocessed.assumption_formulas` carries them and they are checked like any
+other assumption, and the conclusion needing no number (`countermodel_conclusion`) — then the
+formula, then `✓` or `✗` on a line of its own, `⚠️` staying reserved for the verdict that came out
+the wrong way round. Inside the reason nothing may be paired up by position: one sentence naming
+both sides at once — "the left-hand side holds but the right-hand side does not", with the two bare
+formulas stacked underneath it — makes the reader match sentence-halves to formulas by where they
+sit, so each side names itself instead (`reason_condition_holds`, `reason_condition_fails`,
+`reason_consequent_holds`, `reason_consequent_fails`), carries its own formula, and carries its own
+nested reason under that. **The sentence those sides license is then said out loud** —
+`reason_therefore_vacuous`, `reason_therefore_holds`, `reason_therefore_fails` — because "the
+condition fails, *therefore* the implication holds vacuously" is the entire content of a vacuous
+truth, and showing only the premise leaves the reader to make the inference. Sibling parts are
+separated by a blank line and one entry from the next by two: a block this deeply indented is read
+by its shape before it is read by its words.
+
+**That layout is two key→key tables, which is why it lives in a module that holds no words.** The
+reason key already says everything the layout needs to know, so `REASON_PARTS` and
+`REASON_CONCLUSIONS`, beside `_say_reason`, map a reason key to the phrase *keys* for its sides'
+labels and for the sentence it licenses — keys, not text, in the same style as
+`search.STRATEGY_KEY_NAMES`, so the catalogues keep every word and `narration.py` keeps the
+decision about which word is said where. Three whole-sentence implication phrases went away with
+them, in both catalogues: a sentence naming both sides at once cannot be split over the two
+formulas it is about, and there is nothing left for it to say once each side has spoken and the
+conclusion is drawn.
+
 **A reason carries the reason for the side that decided it, and a named element the reason for its
 own body.** "The left side holds" is exactly the point at which a reader wants to ask *why*, so
 `_reason`'s `Implies` branch attaches to each side it prints that side's own reason: `condition`
@@ -755,9 +784,11 @@ what makes its instantiated body safe to evaluate at all. Since the key is then 
 every one of those cases, the narration spots them by `values.get(f"{name}_reason")` and
 `values.get("body_reason")` coming back `None` rather than by comparing a key against
 `counterexample.PLAINLY`. The notebook flattens every module into one namespace, so an import
-between those two would be paid for in exactly the currency this package is short of. Nothing new
-was needed in the catalogues either: a nested sentence is one of the `reason_*` phrases both
-languages already carry, so both got the nesting for free.
+between those two would be paid for in exactly the currency this package is short of. **That same
+presence test also chooses how the sentence above the nesting is punctuated**: a reason that names
+an element takes the `_because` variant of its phrase — `reason_universal_fails_because`,
+`reason_witnessed_because`, both ending in `:` — when a `body_reason` follows it, and the plain one
+ending in `.` when none does, so a colon never promises a line that is not coming.
 
 Two refusals, and **only one of them is reachable today**. A run under **`SET_OF_SUPPORT`** is
 turned away out loud (`prover._build_countermodel`), because that search never tried the inferences

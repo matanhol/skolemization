@@ -2100,9 +2100,15 @@ def countermodel(
         phrase("countermodel_check")
     )
 
-    for formula, verdict, is_conclusion, reason in checks:
+    # The assumptions are numbered in the order they arrive, so the reader can
+    # point at one; the conclusion is the entry that names itself.
+    number = 0
+
+    for position, (formula, verdict, is_conclusion, reason) in enumerate(checks):
 
         if is_conclusion:
+
+            header = phrase("countermodel_conclusion")
 
             label = (
                 "countermodel_conclusion_true"
@@ -2112,24 +2118,49 @@ def countermodel(
 
         else:
 
+            number += 1
+
+            header = phrase(
+                "countermodel_assumption",
+                number=number
+            )
+
             label = (
                 "countermodel_assumption_true"
                 if verdict
                 else "countermodel_assumption_false"
             )
 
+        # Two blank lines between entries, so an entry reads as one block
+        # rather than as more of the previous one; one under the section
+        # header, whose own leading newline separates it from what came before
+        # rather than from what follows.
         say(
-            phrase(label)
+            ("\n\n" if position else "\n")
+            + header
         )
 
+        # The formula first and the verdict after it: a reader told "it holds"
+        # before being shown *what* holds is being told about nothing.
         say_block(
-            "        ",
+            "    ",
             formula_str(formula),
-            indent="        "
+            indent="    "
+        )
+
+        say(
+            "\n"
+            + "    "
+            + phrase(label)
+        )
+
+        say(
+            ""
         )
 
         _say_reason(
-            reason
+            reason,
+            "    "
         )
 
     if holds:
@@ -2160,41 +2191,155 @@ def _say_facts(
         )
 
 
+# The parts a reason is made of, and the phrase that labels each: the value
+# holding the subformula, and the sentence introducing it.  The reason key
+# already says which sides exist and what each of them did, so this table is
+# the whole difference between one shape and the next -- which is why it lives
+# here as data rather than as a branch per reason, the way STRATEGY_KEY_NAMES
+# does.  A reason absent from it is one sentence and no formula.
+
+REASON_PARTS = {
+
+    "implication_fails":
+    (
+        ("condition", "reason_condition_holds"),
+        ("consequent", "reason_consequent_fails")
+    ),
+
+    "vacuous_implication":
+    (
+        ("condition", "reason_condition_fails"),
+    ),
+
+    "implication_holds":
+    (
+        ("consequent", "reason_consequent_holds"),
+    ),
+
+    "vacuous_universal":
+    (
+        ("condition", "reason_vacuous_universal"),
+    ),
+
+}
+
+# The sentence the parts license, said once they have all been shown.  It is
+# the step the reader has to take themselves otherwise: the condition failing
+# is a fact about the condition, and *therefore the implication holds
+# vacuously* is the thing being claimed.  ``vacuous_universal`` is absent
+# because it licenses nothing -- it is one label over one formula.
+
+REASON_CONCLUSIONS = {
+
+    "implication_fails": "reason_therefore_fails",
+    "vacuous_implication": "reason_therefore_vacuous",
+    "implication_holds": "reason_therefore_holds",
+
+}
+
+
 def _say_reason(
     reason,
-    indent="            "
+    indent="    "
 ):
 
-    """One line under a formula: what makes it come out that way here.
+    """What makes a formula come out the way it does here, laid out as a block.
 
-    A reason that names a subformula prints it after the sentence, so the
-    reader sees which condition was never met rather than being told that one
-    was not.  A side may also carry a reason of its own -- "the left side
-    holds" is exactly the question the reader is left with -- and that one is
-    told the same way, one level further in, so the sentence sits under the
-    formula it is about rather than beside it.
+    Every part reads label -> formula -> why: the sentence naming a side is
+    printed *before* that side, so a reader is never told about a formula they
+    have not been shown, and a side's own reason sits under it rather than
+    beside it.  Sibling parts are separated by a blank line, because an
+    implication over two formulas run together leaves the reader pairing
+    sentence-halves with formulas by position.
 
-    A reason that names an element nests the same way, for the same reason: it
-    says *which* element was chosen and not *why* that one works, so the body
-    it was chosen for carries its own reason, already instantiated at that
-    element.  Nothing is printed ahead of it -- the quantified formula is on
-    the line above and the body appears inside the nested sentence -- so this
-    is a bare recursive call rather than a formula followed by one.
+    The parts are closed by the sentence they license -- the condition fails,
+    *therefore* the implication holds vacuously -- which is the one step the
+    layout cannot show.
 
-    The nesting is the only thing ``indent`` is for: the top level keeps the
-    indents this printed before there was a second level.
+    Every other reason is a single sentence.  One that names an element has two
+    spellings, and which is right is decided by what follows it: the
+    ``_because`` variant ends in a colon and introduces the body's own reason,
+    the plain one ends in a full stop and closes the thought.
+
+    ``indent`` is the nesting, one level per step inwards.
     """
 
     key, values = reason
+
+    parts = REASON_PARTS.get(key)
+
+    if parts is not None:
+
+        for position, (name, label) in enumerate(parts):
+
+            say(
+                ("\n" if position else "")
+                + indent
+                + phrase(label)
+            )
+
+            say_block(
+                indent + "    ",
+                formula_str(
+                    values[name]
+                ),
+                indent=indent + "    "
+            )
+
+            # Attached only when it says something, so its presence is the test.
+            nested = values.get(f"{name}_reason")
+
+            if nested is not None:
+
+                # A nested reason that opens a block of its own is set off from
+                # the formula above it; a single closing sentence belongs
+                # against that formula, since it is about nothing else.
+                opens_block = (
+                    nested[0] in REASON_PARTS
+                    or "body_reason" in nested[1]
+                )
+
+                if opens_block:
+
+                    say(
+                        ""
+                    )
+
+                _say_reason(
+                    nested,
+                    indent + "    "
+                )
+
+        conclusion = REASON_CONCLUSIONS.get(key)
+
+        if conclusion is not None:
+
+            say(
+                "\n"
+                + indent
+                + phrase(conclusion)
+            )
+
+        return
+
+    # Attached only when it says something, so its presence is the test -- and
+    # here it also chooses the spelling, colon against full stop.
+    body = values.get("body_reason")
 
     # An element is the one value a reason interpolates; the rest of the
     # phrases take no arguments at all, so asking for one would be a lie.
     if "element" in values:
 
+        spelling = (
+            f"reason_{key}_because"
+            if body is not None
+            else f"reason_{key}"
+        )
+
         say(
             indent
             + phrase(
-                f"reason_{key}",
+                spelling,
                 element=ltr(
                     values["element"]
                 )
@@ -2208,38 +2353,12 @@ def _say_reason(
             + phrase(f"reason_{key}")
         )
 
-    # Attached only when it says something, so its presence is the test.
-    body = values.get("body_reason")
-
     if body is not None:
 
         _say_reason(
             body,
             indent + "    "
         )
-
-    for name in ("condition", "consequent"):
-
-        if name not in values:
-            continue
-
-        say_block(
-            indent + "    ",
-            formula_str(
-                values[name]
-            ),
-            indent=indent + "    "
-        )
-
-        # Attached only when it says something, so its presence is the test.
-        nested = values.get(f"{name}_reason")
-
-        if nested is not None:
-
-            _say_reason(
-                nested,
-                indent + "        "
-            )
 
 
 def countermodel_not_found(

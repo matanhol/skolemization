@@ -649,17 +649,23 @@ The search saturated without a contradiction, so the clause set is""",
     """
 Checking the model against the original question:""",
 
+    "countermodel_assumption":
+    "assumption {number}:",
+
+    "countermodel_conclusion":
+    "conclusion:",
+
     "countermodel_assumption_true":
-    "    the assumption holds:",
+    "✓ holds in the model.",
 
     "countermodel_assumption_false":
-    "    ⚠️ the assumption fails -- which should not happen:",
+    "⚠️ does not hold in the model -- which should not happen.",
 
     "countermodel_conclusion_false":
-    "    the conclusion fails:",
+    "✗ does not hold in the model.",
 
     "countermodel_conclusion_true":
-    "    ⚠️ the conclusion holds -- which should not happen:",
+    "⚠️ holds in the model -- which should not happen.",
 
     "countermodel_verdict":
     """
@@ -681,7 +687,7 @@ No counter-model was built: the search ran with a set of support, so its
 running dry certifies nothing.""",
 
     "reason_vacuous_universal":
-    "vacuously: no element of the model satisfies",
+    "vacuously: no element of the model satisfies the condition:",
 
     "reason_universal_holds":
     "it holds of every element of the domain.",
@@ -695,17 +701,35 @@ running dry certifies nothing.""",
     "reason_no_witness":
     "no element of the model satisfies it.",
 
-    "reason_vacuous_implication":
-    "vacuously: the left-hand side does not hold here --",
-
-    "reason_implication_holds":
-    "the right-hand side holds here --",
-
-    "reason_implication_fails":
-    "the left-hand side holds but the right-hand side does not --",
-
     "reason_plainly":
     "that is how it comes out in the model.",
+
+    "reason_universal_fails_because":
+    "it fails for {element}:",
+
+    "reason_witnessed_because":
+    "witnessed by {element}:",
+
+    "reason_condition_holds":
+    "the left-hand side holds:",
+
+    "reason_condition_fails":
+    "the left-hand side does not hold:",
+
+    "reason_consequent_holds":
+    "the right-hand side holds:",
+
+    "reason_consequent_fails":
+    "but the right-hand side does not hold:",
+
+    "reason_therefore_vacuous":
+    "so the implication holds vacuously.",
+
+    "reason_therefore_holds":
+    "so the implication holds.",
+
+    "reason_therefore_fails":
+    "so the implication does not hold.",
 
     "countermodel_gave_up_separate_witnesses":
     """
